@@ -81,7 +81,7 @@ fn run() -> Result<(), Box<Error>> {
                 aux_record.id = field.parse::<i32>().unwrap();
             }
             if counter != 41 {
-                aux_record.data[counter] = field.parse::<f32>().unwrap();
+                aux_record.data[counter - 1] = field.parse::<f32>().unwrap();
                 counter += 1;
                 println!("{}", field);
             } else {
