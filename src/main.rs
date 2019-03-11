@@ -79,14 +79,13 @@ fn run() -> Result<(), Box<Error>> {
             // CSV structure: id , ... 40 data ... , class
             if counter == 0 {
                 aux_record.id = field.parse::<i32>().unwrap();
-            }
-            if counter != 41 {
+            } else if counter != 41 {
                 aux_record.data[counter - 1] = field.parse::<f32>().unwrap();
-                counter += 1;
-                println!("{}", field);
             } else {
                 aux_record.class = field.parse::<i32>().unwrap();
             }
+
+            counter += 1;
         }
 
         data.push(aux_record);
