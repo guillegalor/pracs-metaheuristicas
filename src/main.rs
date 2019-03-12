@@ -32,6 +32,20 @@ impl TextureRecord {
 
         return dist;
     }
+
+    // TODO Check if weights length coincide with the num of attributes
+    // Euclidian distance considering weights
+    fn eu_dist_with_weigths(&self, other: &TextureRecord, weights: &Vec<f32>) -> f32 {
+        let mut dist = 0.0;
+        for attr in 0..40 {
+            dist += (self.attributes[attr] - other.attributes[attr])
+                * (self.attributes[attr] - other.attributes[attr])
+                * weights[attr];
+        }
+        dist = dist.sqrt();
+
+        return dist;
+    }
 }
 
 fn normalize_data(data: Vec<TextureRecord>) -> Vec<TextureRecord> {
@@ -51,7 +65,7 @@ fn normalize_data(data: Vec<TextureRecord>) -> Vec<TextureRecord> {
         }
     }
 
-    let mut new_data = data.clone();
+    let mut new_data = data;
 
     let mut max_distances: [f32; 40] = [0.0; 40];
     for attr in 0..40 {
@@ -60,14 +74,14 @@ fn normalize_data(data: Vec<TextureRecord>) -> Vec<TextureRecord> {
 
     for elem in new_data.iter_mut() {
         for attr in 0..40 {
-            elem.attributes[attr] = 0.0;
+            elem.attributes[attr] = (elem.attributes[attr] - mins[attr]) / max_distances[attr];
         }
     }
 
     return new_data;
 }
 
-fn make_partitions(data: Vec<TextureRecord>) -> Vec<Vec<TextureRecord>> {
+fn make_partitions(data: &Vec<TextureRecord>) -> Vec<Vec<TextureRecord>> {
     let folds = 5;
 
     let mut categories_count = HashMap::new();
@@ -77,9 +91,9 @@ fn make_partitions(data: Vec<TextureRecord>) -> Vec<Vec<TextureRecord>> {
         partitions.push(Vec::new());
     }
 
-    for example in data {
+    for example in data.iter() {
         let counter = categories_count.entry(example.class).or_insert(0);
-        partitions[*counter].push(example);
+        partitions[*counter].push(example.clone());
 
         *counter = (*counter + 1) % folds;
     }
@@ -87,24 +101,48 @@ fn make_partitions(data: Vec<TextureRecord>) -> Vec<Vec<TextureRecord>> {
     return partitions;
 }
 
-fn classifier_1nn(data: Vec<TextureRecord>, item: TextureRecord) -> i32 {
+fn classifier_1nn(data: &Vec<TextureRecord>, item: &TextureRecord) -> i32 {
     let mut c_min = data[0].class;
     let mut d_min = item.euclidian_distance(&data[0]);
 
     for example in data {
-        let distance = item.euclidian_distance(&example);
-        if distance < d_min {
-            c_min = example.class;
-            d_min = distance;
+        if example.id != item.id {
+            let distance = item.euclidian_distance(&example);
+            if distance < d_min {
+                c_min = example.class;
+                d_min = distance;
+            }
         }
     }
 
     return c_min;
 }
 
+fn classifier_1nn_with_weights(
+    data: &Vec<TextureRecord>,
+    item: &TextureRecord,
+    weights: &Vec<f32>,
+) -> i32 {
+    let mut c_min = data[0].class;
+    let mut d_min = item.euclidian_distance(&data[0]);
+
+    for example in data {
+        if example.id != item.id {
+            let distance = item.eu_dist_with_weigths(&example, weights);
+            if distance < d_min {
+                c_min = example.class;
+                d_min = distance;
+            }
+        }
+    }
+
+    return c_min;
+}
+
+// TODO Change magic num "40"
 // Greedy algorithm
-fn relief_algorithm(data: Vec<TextureRecord>) -> [f32; 40] {
-    let mut weights = [0.0; 40];
+fn relief_algorithm(data: &Vec<TextureRecord>) -> Vec<f32> {
+    let mut weights = Vec::with_capacity(40);
     for elem in data.iter() {
         let mut nearest_enemy = TextureRecord::new();
         let mut nearest_ally = TextureRecord::new();
@@ -169,9 +207,9 @@ fn run() -> Result<(), Box<Error>> {
         data.push(aux_record);
     }
 
-    // data = normalize(data);
+    data = normalize_data(data);
 
-    let partitions = make_partitions(data);
+    let partitions = make_partitions(&data);
 
     // Stablish training and test sets
     for test in 0..5 {
@@ -184,6 +222,25 @@ fn run() -> Result<(), Box<Error>> {
             } else {
                 test_set = partitions[part].clone();
             }
+        }
+
+        // 1-NN
+        let mut guessin_1nn: Vec<i32> = Vec::new();
+
+        for elem in test_set.iter() {
+            guessin_1nn.push(classifier_1nn(&training_set, elem));
+        }
+
+        // Relief algorithm (greedy)
+        let relief_weights = relief_algorithm(&training_set);
+        let mut guessin_relief: Vec<i32> = Vec::new();
+
+        for elem in test_set.iter() {
+            guessin_relief.push(classifier_1nn_with_weights(
+                &training_set,
+                elem,
+                &relief_weights,
+            ));
         }
     }
 
