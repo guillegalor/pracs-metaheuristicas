@@ -1,0 +1,11 @@
+[package]
+name = "weight-optimizing-algorithms-classifications"
+version = "0.1.0"
+authors = ["guille <guillegalor@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+csv = "1.0.5"
+rustc-serialize = "0.3.24"
+serde_derive = "1.0.89"
+serde = "1.0.89"
