@@ -38,7 +38,7 @@ fn normalize_data(data: Vec<TextureRecord>) -> Vec<TextureRecord> {
     let mut mins = [std::f32::MAX; 40];
     let mut maxs = [std::f32::MIN; 40];
 
-    for elem in data {
+    for elem in data.iter() {
         for attr in 0..40 {
             // Calculates min
             if elem.attributes[attr] < mins[attr] {
@@ -58,7 +58,7 @@ fn normalize_data(data: Vec<TextureRecord>) -> Vec<TextureRecord> {
         max_distances[attr] = maxs[attr] - mins[attr];
     }
 
-    for elem in new_data.iter() {
+    for elem in new_data.iter_mut() {
         for attr in 0..40 {
             elem.attributes[attr] = 0.0;
         }
