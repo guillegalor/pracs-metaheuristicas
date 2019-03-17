@@ -6,6 +6,17 @@ use std::io;
 use std::num;
 use std::process;
 
+pub trait DataElem<T> {
+    fn new() -> T;
+    fn get_num_attributes() -> usize;
+    fn get_id(&self) -> i32;
+    fn get_class(&self) -> i32;
+    fn get_attribute(&self, index: usize) -> f32;
+    fn set_id(&mut self, id: i32);
+    fn set_class(&mut self, class: i32);
+    fn set_attribute(&mut self, index: usize, attr: f32);
+}
+
 #[derive(Copy, Clone)]
 struct TextureRecord {
     id: i32,
@@ -13,7 +24,7 @@ struct TextureRecord {
     class: i32,
 }
 
-impl TextureRecord {
+impl DataElem<TextureRecord> for TextureRecord {
     fn new() -> TextureRecord {
         TextureRecord {
             id: -1,
@@ -22,77 +33,121 @@ impl TextureRecord {
         }
     }
 
-    fn euclidian_distance(&self, other: &TextureRecord) -> f32 {
-        let mut dist = 0.0;
-        for it in 0..40 {
-            dist += (self.attributes[it] - other.attributes[it])
-                * (self.attributes[it] - other.attributes[it]);
-        }
-        dist = dist.sqrt();
-
-        return dist;
+    fn get_num_attributes() -> usize {
+        return 40;
     }
 
-    // TODO Check if weights length coincide with the num of attributes
-    // Euclidian distance considering weights
-    fn eu_dist_with_weigths(&self, other: &TextureRecord, weights: &Vec<f32>) -> f32 {
-        let mut dist = 0.0;
-        for attr in 0..40 {
-            dist += (self.attributes[attr] - other.attributes[attr])
-                * (self.attributes[attr] - other.attributes[attr])
-                * weights[attr];
-        }
-        dist = dist.sqrt();
+    fn get_id(&self) -> i32 {
+        return self.id;
+    }
 
-        return dist;
+    fn get_class(&self) -> i32 {
+        return self.class;
+    }
+
+    // NOTE Not sure if we should check if index is in range
+    fn get_attribute(&self, index: usize) -> f32 {
+        return self.attributes[index];
+    }
+
+    fn set_id(&mut self, id: i32) {
+        self.id = id;
+    }
+
+    fn set_class(&mut self, class: i32) {
+        self.class = class;
+    }
+
+    fn set_attribute(&mut self, index: usize, attr: f32) {
+        self.attributes[index] = attr;
     }
 }
 
-fn normalize_data(data: Vec<TextureRecord>) -> Vec<TextureRecord> {
-    let mut mins = [std::f32::MAX; 40];
-    let mut maxs = [std::f32::MIN; 40];
+fn euclidian_distance<T: DataElem<T> + Copy + Clone>(one: &T, other: &T) -> f32 {
+    let mut dist: f32 = 0.0;
+    for attr in 0..T::get_num_attributes() {
+        dist += (one.get_attribute(attr) - other.get_attribute(attr))
+            * (one.get_attribute(attr) - other.get_attribute(attr));
+    }
+
+    dist = dist.sqrt();
+
+    return dist;
+}
+
+// Euclidian distance considering weights
+fn eu_dist_with_weigths<T: DataElem<T> + Copy + Clone>(
+    one: &T,
+    other: &T,
+    weights: &Vec<f32>,
+) -> Result<f32, &'static str> {
+    if T::get_num_attributes() != weights.len() {
+        return Err("El numero de pesos no coincide con el numero de atributos");
+    }
+
+    let mut dist = 0.0;
+    for attr in 0..T::get_num_attributes() {
+        dist += (one.get_attribute(attr) - other.get_attribute(attr))
+            * (one.get_attribute(attr) - other.get_attribute(attr))
+            * weights[attr];
+    }
+    dist = dist.sqrt();
+
+    return Ok(dist);
+}
+
+//---------------------------------------------------------------------------------------
+
+fn normalize_data<T: DataElem<T> + Copy + Clone>(data: Vec<T>) -> Vec<T> {
+    let num_attrs = T::get_num_attributes();
+
+    let mut mins = vec![std::f32::MAX; num_attrs];
+    let mut maxs = vec![std::f32::MIN; num_attrs];
 
     for elem in data.iter() {
-        for attr in 0..40 {
+        for attr in 0..num_attrs {
             // Calculates min
-            if elem.attributes[attr] < mins[attr] {
-                mins[attr] = elem.attributes[attr];
+            if elem.get_attribute(attr) < mins[attr] {
+                mins[attr] = elem.get_attribute(attr);
             }
             // Calculates max
-            if elem.attributes[attr] > mins[attr] {
-                maxs[attr] = elem.attributes[attr];
+            if elem.get_attribute(attr) > maxs[attr] {
+                maxs[attr] = elem.get_attribute(attr);
             }
         }
     }
 
     let mut new_data = data;
 
-    let mut max_distances: [f32; 40] = [0.0; 40];
-    for attr in 0..40 {
+    let mut max_distances = vec![0.0; num_attrs];
+    for attr in 0..num_attrs {
         max_distances[attr] = maxs[attr] - mins[attr];
     }
 
     for elem in new_data.iter_mut() {
-        for attr in 0..40 {
-            elem.attributes[attr] = (elem.attributes[attr] - mins[attr]) / max_distances[attr];
+        for attr in 0..num_attrs {
+            elem.set_attribute(
+                attr,
+                (elem.get_attribute(attr) - mins[attr]) / max_distances[attr],
+            );
         }
     }
 
     return new_data;
 }
 
-fn make_partitions(data: &Vec<TextureRecord>) -> Vec<Vec<TextureRecord>> {
+fn make_partitions<T: DataElem<T> + Copy + Clone>(data: &Vec<T>) -> Vec<Vec<T>> {
     let folds = 5;
 
     let mut categories_count = HashMap::new();
-    let mut partitions: Vec<Vec<TextureRecord>> = Vec::new();
+    let mut partitions: Vec<Vec<T>> = Vec::new();
 
     for _ in 0..folds {
         partitions.push(Vec::new());
     }
 
     for example in data.iter() {
-        let counter = categories_count.entry(example.class).or_insert(0);
+        let counter = categories_count.entry(example.get_class()).or_insert(0);
         partitions[*counter].push(example.clone());
 
         *counter = (*counter + 1) % folds;
@@ -101,15 +156,16 @@ fn make_partitions(data: &Vec<TextureRecord>) -> Vec<Vec<TextureRecord>> {
     return partitions;
 }
 
-fn classifier_1nn(data: &Vec<TextureRecord>, item: &TextureRecord) -> i32 {
-    let mut c_min = data[0].class;
-    let mut d_min = item.euclidian_distance(&data[0]);
+fn classifier_1nn<T: DataElem<T> + Copy + Clone>(data: &Vec<T>, item: &T) -> i32 {
+    let mut c_min = data[0].get_class();
+    let mut d_min = euclidian_distance(item, &data[0]);
 
-    for example in data {
-        if example.id != item.id {
-            let distance = item.euclidian_distance(&example);
+    for example in data.iter().skip(1) {
+        if example.get_id() != item.get_id() {
+            let distance = euclidian_distance(item, example);
+
             if distance < d_min {
-                c_min = example.class;
+                c_min = example.get_class();
                 d_min = distance;
             }
         }
@@ -118,91 +174,159 @@ fn classifier_1nn(data: &Vec<TextureRecord>, item: &TextureRecord) -> i32 {
     return c_min;
 }
 
-fn classifier_1nn_with_weights(
-    data: &Vec<TextureRecord>,
-    item: &TextureRecord,
+fn classifier_1nn_with_weights<T: DataElem<T> + Copy + Clone>(
+    data: &Vec<T>,
+    item: &T,
     weights: &Vec<f32>,
-) -> i32 {
-    let mut c_min = data[0].class;
-    let mut d_min = item.euclidian_distance(&data[0]);
+) -> Result<i32, Box<Error>> {
+    let mut c_min = data[0].get_class();
+    let mut d_min = eu_dist_with_weigths(item, &data[0], weights)?;
 
-    for example in data {
-        if example.id != item.id {
-            let distance = item.eu_dist_with_weigths(&example, weights);
-            if distance < d_min {
-                c_min = example.class;
-                d_min = distance;
+    for example in data.iter().skip(1) {
+        if example.get_id() != item.get_id() {
+            let aux_distance = eu_dist_with_weigths(item, example, weights)?;
+            if aux_distance < d_min {
+                c_min = example.get_class();
+                d_min = aux_distance;
             }
         }
     }
 
-    return c_min;
+    return Ok(c_min);
 }
 
-// TODO Change magic num "40"
 // Greedy algorithm
-fn relief_algorithm(data: &Vec<TextureRecord>) -> Vec<f32> {
-    let mut weights = Vec::with_capacity(40);
+fn relief_algorithm<T: DataElem<T> + Copy + Clone>(data: &Vec<T>) -> Vec<f32> {
+    let num_attrs = T::get_num_attributes();
+    let mut weights = vec![0.0; num_attrs];
+
     for elem in data.iter() {
-        let mut nearest_enemy = TextureRecord::new();
-        let mut nearest_ally = TextureRecord::new();
+        let mut nearest_enemy_index = 0;
+        let mut nearest_ally_index = 0;
         let mut best_enemy_distance = std::f32::MAX;
         let mut best_ally_distance = std::f32::MAX;
 
-        for candidate in data.iter() {
-            if elem.id != candidate.id {
-                let aux_distance = elem.euclidian_distance(candidate);
+        for (index, candidate) in data.iter().enumerate() {
+            if elem.get_id() != candidate.get_id() {
+                let aux_distance = euclidian_distance(elem, candidate);
 
                 // Ally search
-                if elem.class == candidate.class {
+                if elem.get_class() == candidate.get_class() {
                     if aux_distance < best_ally_distance {
                         best_ally_distance = aux_distance;
-                        nearest_ally = candidate.clone();
+                        nearest_ally_index = index;
                     }
                 }
                 // Enemy search
                 else {
                     if aux_distance < best_enemy_distance {
                         best_enemy_distance = aux_distance;
-                        nearest_enemy = candidate.clone();
+                        nearest_enemy_index = index;
                     }
                 }
             }
         }
 
-        for attribute in 0..40 {
+        let nearest_ally = data[nearest_ally_index].clone();
+        let nearest_enemy = data[nearest_enemy_index].clone();
+
+        for attr in 0..num_attrs {
             let attr_ally_dist =
-                (elem.attributes[attribute] - nearest_ally.attributes[attribute]).abs();
+                (elem.get_attribute(attr) - nearest_ally.get_attribute(attr)).abs();
             let attr_enemy_dist =
-                (elem.attributes[attribute] - nearest_enemy.attributes[attribute]).abs();
-            weights[attribute] = weights[attribute] + attr_enemy_dist - attr_ally_dist;
+                (elem.get_attribute(attr) - nearest_enemy.get_attribute(attr)).abs();
+            weights[attr] += attr_enemy_dist - attr_ally_dist;
+        }
+    }
+
+    let mut max_weight = weights[0];
+
+    for w in weights.iter() {
+        if *w > max_weight {
+            max_weight = *w;
+        }
+    }
+
+    for w in weights.iter_mut() {
+        if *w < 0.0 {
+            *w = 0.0;
+        } else {
+            *w = *w / max_weight;
         }
     }
 
     return weights;
 }
 
+// TODO Local search
+fn local_search<T: DataElem<T> + Copy + Clone>(data: &T, num_of_neighbours: usize) {
+    for iteration in 0..num_of_neighbours {}
+}
+
+fn class_rate<T: DataElem<T> + Copy + Clone>(
+    data: &Vec<T>,
+    guessing: &Vec<i32>,
+) -> Result<f32, &'static str> {
+    if data.len() != guessing.len() {
+        return Err("El numero de clases no coincide con el numero de elementos");
+    }
+
+    let mut counter = 0.0;
+
+    for (index, elem) in data.iter().enumerate() {
+        if elem.get_class() == guessing[index] {
+            counter += 1.0;
+        }
+    }
+
+    return Ok(100.0 * counter / (data.len() as f32));
+}
+
+fn red_rate(weights: &Vec<f32>, num_attrs: usize) -> Result<f32, &'static str> {
+    if weights.len() != num_attrs {
+        return Err("El numero de pesos no coincide con el numero de attributes");
+    }
+
+    let mut counter = 0.0;
+
+    for w in weights.iter() {
+        if *w < 0.2 {
+            counter += 1.0;
+        }
+    }
+
+    return Ok(100.0 * counter / (num_attrs as f32));
+}
+
+fn evaluation_function(class_rate: f32, red_rate: f32, alpha: f32) -> f32 {
+    return alpha * class_rate + (1.0 - alpha) * red_rate;
+}
+
 fn run() -> Result<(), Box<Error>> {
     let mut data: Vec<TextureRecord> = Vec::new();
-    let mut rdr = csv::Reader::from_path("data/texture.csv")?;
+    let mut rdr = csv::Reader::from_path("data/texture-luis.csv")?;
 
+    let mut current_id = 0;
     for result in rdr.records() {
         let mut aux_record = TextureRecord::new();
         let record = result?;
+
         let mut counter = 0;
 
+        aux_record.id = current_id;
+
         for field in record.iter() {
-            // CSV structure: id , ... 40 data ... , class
-            if counter == 0 {
-                aux_record.id = field.parse::<i32>().unwrap();
-            } else if counter != 41 {
-                aux_record.attributes[counter - 1] = field.parse::<f32>().unwrap();
+            // CSV structure: ... 40 data ... , class
+            if counter != TextureRecord::get_num_attributes() {
+                aux_record.attributes[counter] = field.parse::<f32>().unwrap();
             } else {
                 aux_record.class = field.parse::<i32>().unwrap();
             }
 
             counter += 1;
         }
+
+        current_id += 1;
 
         data.push(aux_record);
     }
@@ -211,8 +335,8 @@ fn run() -> Result<(), Box<Error>> {
 
     let partitions = make_partitions(&data);
 
-    // Stablish training and test sets
     for test in 0..5 {
+        // Stablish training and test sets
         let mut training_set: Vec<TextureRecord> = Vec::new();
         let mut test_set: Vec<TextureRecord> = Vec::new();
 
@@ -231,6 +355,23 @@ fn run() -> Result<(), Box<Error>> {
             guessin_1nn.push(classifier_1nn(&training_set, elem));
         }
 
+        // Result
+        let c_rate: f32 = class_rate(&test_set, &guessin_1nn)?;
+        // (0 cause all weights are equal to 1)
+        let r_rate: f32 = 0.0;
+
+        // Results output
+        println!("Resultados para 1nn (Partición de validación {}):", test);
+        // Classification rate
+        println!("   Tasa de clasificación: {}", c_rate,);
+        // Reduction rate
+        println!("   Tasa de reducción: {}", r_rate,);
+        // Evaluation
+        println!(
+            "   Función de evaluación: {}",
+            evaluation_function(c_rate, r_rate, 0.5),
+        );
+
         // Relief algorithm (greedy)
         let relief_weights = relief_algorithm(&training_set);
         let mut guessin_relief: Vec<i32> = Vec::new();
@@ -240,8 +381,30 @@ fn run() -> Result<(), Box<Error>> {
                 &training_set,
                 elem,
                 &relief_weights,
-            ));
+            )?);
         }
+
+        // Result
+        let c_rate: f32 = class_rate(&test_set, &guessin_relief)?;
+        // (0 cause all weights are equal to 1)
+        let r_rate: f32 = red_rate(&relief_weights, TextureRecord::get_num_attributes())?;
+
+        // Results output
+        println!(
+            "Resultados para Relief (Partición de validación {}):",
+            test
+        );
+        // Classification rate
+        println!("  Tasa de clasificación: {}", c_rate,);
+        // Reduction rate
+        println!("  Tasa de reducción: {}", r_rate,);
+        // Evaluation
+        println!(
+            "   Función de evaluación: {}",
+            evaluation_function(c_rate, r_rate, 0.5),
+        );
+
+        println!("-------------------------------");
     }
 
     Ok(())
