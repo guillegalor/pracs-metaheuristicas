@@ -2,9 +2,11 @@ extern crate csv;
 
 use std::collections::HashMap;
 use std::error::Error;
-use std::io;
-use std::num;
 use std::process;
+
+/// Trait for CSV data
+///
+/// **Note**: The struct implementing this trait must also implement `Copy` and `Clone`.
 
 pub trait DataElem<T> {
     fn new() -> T;
@@ -63,7 +65,19 @@ impl DataElem<TextureRecord> for TextureRecord {
     }
 }
 
-fn euclidian_distance<T: DataElem<T> + Copy + Clone>(one: &T, other: &T) -> f32 {
+//---------------------------------------------------------------------------------------
+
+/// Calculate the euclidian_distance distance between two `T` elements .
+///
+/// # Arguments
+///
+/// * `one` - First `T` element
+/// * `other` - Second `T` element
+///
+/// # Returns
+/// Returns the distance as a f32
+
+pub fn euclidian_distance<T: DataElem<T> + Copy + Clone>(one: &T, other: &T) -> f32 {
     let mut dist: f32 = 0.0;
     for attr in 0..T::get_num_attributes() {
         dist += (one.get_attribute(attr) - other.get_attribute(attr))
@@ -75,8 +89,20 @@ fn euclidian_distance<T: DataElem<T> + Copy + Clone>(one: &T, other: &T) -> f32 
     return dist;
 }
 
-// Euclidian distance considering weights
-fn eu_dist_with_weigths<T: DataElem<T> + Copy + Clone>(
+/// Calculate the "euclidian_distance" distance between two `T` elements
+/// asigning a weight to every attribute
+///
+/// # Arguments
+///
+/// * `one` - First `T` element
+/// * `other` - Second `T` element
+/// * `weights` - Vec with a weight(between 0 and 1) for every attribute
+///
+/// # Returns
+/// A `Result ` with:
+/// * `Err(&'static str)` if the number or weights doesn't coincide with the number ot attrs of `T`
+/// * `Ok(f32)`
+pub fn eu_dist_with_weigths<T: DataElem<T> + Copy + Clone>(
     one: &T,
     other: &T,
     weights: &Vec<f32>,
@@ -98,7 +124,15 @@ fn eu_dist_with_weigths<T: DataElem<T> + Copy + Clone>(
 
 //---------------------------------------------------------------------------------------
 
-fn normalize_data<T: DataElem<T> + Copy + Clone>(data: Vec<T>) -> Vec<T> {
+/// Normalize attributes of a vec of `T` so everyone is in [0,1]
+/// # Arguments
+///
+/// * `data` - Vec of `T` being normalized
+///
+/// # Returns
+/// Returns a vec of `T` normalized
+
+pub fn normalize_data<T: DataElem<T> + Copy + Clone>(data: Vec<T>) -> Vec<T> {
     let num_attrs = T::get_num_attributes();
 
     let mut mins = vec![std::f32::MAX; num_attrs];
@@ -136,7 +170,15 @@ fn normalize_data<T: DataElem<T> + Copy + Clone>(data: Vec<T>) -> Vec<T> {
     return new_data;
 }
 
-fn make_partitions<T: DataElem<T> + Copy + Clone>(data: &Vec<T>) -> Vec<Vec<T>> {
+/// Makes partitions keeping the class diversity.
+///
+/// # Arguments
+///
+/// * `data` - Vec with all the data.
+///
+/// # Returns
+/// Returns a vector with 5 vectors of `T`.
+pub fn make_partitions<T: DataElem<T> + Copy + Clone>(data: &Vec<T>) -> Vec<Vec<T>> {
     let folds = 5;
 
     let mut categories_count = HashMap::new();
@@ -156,7 +198,17 @@ fn make_partitions<T: DataElem<T> + Copy + Clone>(data: &Vec<T>) -> Vec<Vec<T>> 
     return partitions;
 }
 
-fn classifier_1nn<T: DataElem<T> + Copy + Clone>(data: &Vec<T>, item: &T) -> i32 {
+/// Classifies one `T` item using a Vec of `T` elems and the 1nn algorithm
+///
+/// # Arguments
+///
+/// * `data` - Vec of `T` used as knowledge
+/// * `item` - `T` elem being classified
+///
+/// # Returns
+/// An i32 which represents the guessed class of `item`
+
+pub fn classifier_1nn<T: DataElem<T> + Copy + Clone>(data: &Vec<T>, item: &T) -> i32 {
     let mut c_min = data[0].get_class();
     let mut d_min = euclidian_distance(item, &data[0]);
 
@@ -174,7 +226,21 @@ fn classifier_1nn<T: DataElem<T> + Copy + Clone>(data: &Vec<T>, item: &T) -> i32
     return c_min;
 }
 
-fn classifier_1nn_with_weights<T: DataElem<T> + Copy + Clone>(
+/// Classifies one `T` item using a Vec of `T` elems, a Vec of weights and the
+/// 1nn algorithm
+///
+/// # Arguments
+///
+/// * `data` - Vec of `T` used as knowledge
+/// * `item` - `T` elem being classified
+/// * `weights` - Vec of f32 representing weights
+///
+/// # Returns
+/// A `Result` with:
+/// * `Err(&'static str)` if the number or weights doesn't coincide with the number ot attrs of `T`
+/// * `Ok(i32)`
+
+pub fn classifier_1nn_with_weights<T: DataElem<T> + Copy + Clone>(
     data: &Vec<T>,
     item: &T,
     weights: &Vec<f32>,
@@ -195,8 +261,16 @@ fn classifier_1nn_with_weights<T: DataElem<T> + Copy + Clone>(
     return Ok(c_min);
 }
 
-// Greedy algorithm
-fn relief_algorithm<T: DataElem<T> + Copy + Clone>(data: &Vec<T>) -> Vec<f32> {
+/// Calculates a vec of weights using a vec of `T` elems as knowledge
+///
+/// # Arguments
+///
+/// * `data` - Vec of `T` used as knowledge
+///
+/// # Returns
+/// A Vec with the same num of f32 elems as the num of attributes of `T`
+
+pub fn relief_algorithm<T: DataElem<T> + Copy + Clone>(data: &Vec<T>) -> Vec<f32> {
     let num_attrs = T::get_num_attributes();
     let mut weights = vec![0.0; num_attrs];
 
@@ -263,7 +337,19 @@ fn local_search<T: DataElem<T> + Copy + Clone>(data: &T, num_of_neighbours: usiz
     for iteration in 0..num_of_neighbours {}
 }
 
-fn class_rate<T: DataElem<T> + Copy + Clone>(
+/// Calculates the percentage of correctly classified elems
+///
+/// # Arguments
+///
+/// * `data` - Vec of `T` used as knowledge
+/// * `guessing` - Vec of i32 which represents the guessed class for every elem of data
+///
+/// # Returns
+/// A `Result` with:
+/// * `Err(&'static str)` if the size of `guessing` doesn't coincide with the size of `data`
+/// * `Ok(f32)` with the percentage
+
+pub fn class_rate<T: DataElem<T> + Copy + Clone>(
     data: &Vec<T>,
     guessing: &Vec<i32>,
 ) -> Result<f32, &'static str> {
@@ -282,11 +368,17 @@ fn class_rate<T: DataElem<T> + Copy + Clone>(
     return Ok(100.0 * counter / (data.len() as f32));
 }
 
-fn red_rate(weights: &Vec<f32>, num_attrs: usize) -> Result<f32, &'static str> {
-    if weights.len() != num_attrs {
-        return Err("El numero de pesos no coincide con el numero de attributes");
-    }
+/// Calculates the percentage of attributes that are not going to be used because
+/// its weights are too low (under 0.2)
+///
+/// # Arguments
+///
+/// * `weights` - Vec of f32 representing weights
+///
+/// # Returns
+/// A f32 with the percentage
 
+pub fn red_rate(weights: &Vec<f32>) -> f32 {
     let mut counter = 0.0;
 
     for w in weights.iter() {
@@ -295,13 +387,25 @@ fn red_rate(weights: &Vec<f32>, num_attrs: usize) -> Result<f32, &'static str> {
         }
     }
 
-    return Ok(100.0 * counter / (num_attrs as f32));
+    return 100.0 * counter / (weights.len() as f32);
 }
 
-fn evaluation_function(class_rate: f32, red_rate: f32, alpha: f32) -> f32 {
+/// Calculates the evaluation function using classification and reduction rates
+/// previously calculated
+/// # Arguments
+///
+/// * `class_rate` - Classification rate
+/// * `red_rate` - Reduction rate
+/// * `alpha` - Value of classification importance over reduction (between 0 and 1)
+///
+/// # Returns
+/// An f32 with the result
+
+pub fn evaluation_function(class_rate: f32, red_rate: f32, alpha: f32) -> f32 {
     return alpha * class_rate + (1.0 - alpha) * red_rate;
 }
 
+/// Main function
 fn run() -> Result<(), Box<Error>> {
     let mut data: Vec<TextureRecord> = Vec::new();
     let mut rdr = csv::Reader::from_path("data/texture-luis.csv")?;
@@ -387,7 +491,7 @@ fn run() -> Result<(), Box<Error>> {
         // Result
         let c_rate: f32 = class_rate(&test_set, &guessin_relief)?;
         // (0 cause all weights are equal to 1)
-        let r_rate: f32 = red_rate(&relief_weights, TextureRecord::get_num_attributes())?;
+        let r_rate: f32 = red_rate(&relief_weights);
 
         // Results output
         println!(
