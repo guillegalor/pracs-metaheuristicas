@@ -1,0 +1,46 @@
+Resultados para 1nn (Partición de validación 0):
+   Tasa de clasificación: 93.63636
+   Tasa de reducción: 0
+   Función de evaluación: 46.81818
+Resultados para Relief (Partición de validación 0):
+  Tasa de clasificación: 93.63636
+  Tasa de reducción: 15
+   Función de evaluación: 54.31818
+-------------------------------
+Resultados para 1nn (Partición de validación 1):
+   Tasa de clasificación: 89.09091
+   Tasa de reducción: 0
+   Función de evaluación: 44.545456
+Resultados para Relief (Partición de validación 1):
+  Tasa de clasificación: 90.90909
+  Tasa de reducción: 2.5
+   Función de evaluación: 46.704544
+-------------------------------
+Resultados para 1nn (Partición de validación 2):
+   Tasa de clasificación: 94.545456
+   Tasa de reducción: 0
+   Función de evaluación: 47.272728
+192,2,0.1640682
+Resultados para Relief (Partición de validación 2):
+  Tasa de clasificación: 95.454544
+  Tasa de reducción: 2.5
+   Función de evaluación: 48.977272
+-------------------------------
+Resultados para 1nn (Partición de validación 3):
+   Tasa de clasificación: 92.72727
+   Tasa de reducción: 0
+   Función de evaluación: 46.363636
+Resultados para Relief (Partición de validación 3):
+  Tasa de clasificación: 92.72727
+  Tasa de reducción: 2.5
+   Función de evaluación: 47.613636
+-------------------------------
+Resultados para 1nn (Partición de validación 4):
+   Tasa de clasificación: 92.72727
+   Tasa de reducción: 0
+   Función de evaluación: 46.363636
+Resultados para Relief (Partición de validación 4):
+  Tasa de clasificación: 93.63636
+  Tasa de reducción: 5
+   Función de evaluación: 49.31818
+-------------------------------
