@@ -1,8 +1,13 @@
 extern crate csv;
 
+use rand::distributions::{Distribution, Normal, Uniform};
+use rand::seq::SliceRandom;
+use rand::thread_rng;
+
 use std::collections::HashMap;
 use std::error::Error;
 use std::process;
+use std::time::Instant;
 
 /// Trait for CSV data
 ///
@@ -247,10 +252,14 @@ pub fn classifier_1nn_with_weights<T: DataElem<T> + Copy + Clone>(
 ) -> Result<i32, Box<Error>> {
     let mut c_min = data[0].get_class();
     let mut d_min = eu_dist_with_weigths(item, &data[0], weights)?;
+    let weights_discarding: Vec<f32> = weights
+        .iter()
+        .map(|x| if *x < 0.2 { 0.0 } else { *x })
+        .collect();
 
     for example in data.iter().skip(1) {
         if example.get_id() != item.get_id() {
-            let aux_distance = eu_dist_with_weigths(item, example, weights)?;
+            let aux_distance = eu_dist_with_weigths(item, example, &weights_discarding)?;
             if aux_distance < d_min {
                 c_min = example.get_class();
                 d_min = aux_distance;
@@ -332,9 +341,99 @@ pub fn relief_algorithm<T: DataElem<T> + Copy + Clone>(data: &Vec<T>) -> Vec<f32
     return weights;
 }
 
-// TODO Local search
-fn local_search<T: DataElem<T> + Copy + Clone>(data: &T, num_of_neighbours: usize) {
-    for iteration in 0..num_of_neighbours {}
+// Local search
+// Return the weights vec and the evaluation rate
+pub fn local_search<T: DataElem<T> + Copy + Clone>(data: &Vec<T>) -> Vec<f32> {
+    let num_attrs = T::get_num_attributes();
+    let mut rng = thread_rng();
+
+    // Initialize vector of indexes and shuffles it
+    let mut indexes: Vec<usize> = (0..num_attrs).collect();
+    indexes.shuffle(&mut rng);
+
+    // Local search parameters
+    let mut num_of_mutations = 0;
+    let max_mutations = 15000;
+    let mut neighbours_without_mutting = 0;
+    let max_neighbour_without_muting = 20 * num_attrs;
+
+    // Normal distribution with mean = 0.0, standard deviation = 0.3
+    let normal = Normal::new(0.0, 0.3);
+    let uniform = Uniform::new(0.0, 1.0);
+
+    // Initialize random weights (using normal distribution)
+    let mut weights: Vec<f32> = Vec::with_capacity(T::get_num_attributes());
+    for _ in 0..T::get_num_attributes() {
+        weights.push(uniform.sample(&mut rng) as f32);
+    }
+
+    let mut initial_guessing: Vec<i32> = Vec::new();
+    // Initialize current guessing
+    for elem in data.iter() {
+        initial_guessing.push(
+            classifier_1nn_with_weights(data, elem, &weights)
+                .expect("No coincide el número de pesos con el de atributos (initial_guessing)"),
+        );
+    }
+    let mut current_ev_rate = evaluation_function(
+        class_rate(data, &initial_guessing)
+            .expect("No coincide el número de elementos con el número de <<guessings>"),
+        red_rate(&weights),
+        0.5,
+    );
+
+    while neighbours_without_mutting < max_neighbour_without_muting
+        && num_of_mutations < max_mutations
+    {
+        let mut aux_weights = weights.clone();
+
+        if indexes.is_empty() {
+            indexes = (0..num_attrs).collect();
+            indexes.shuffle(&mut rng);
+        }
+
+        let index = indexes.pop().expect("El vector está vacio");
+
+        aux_weights[index] += normal.sample(&mut rng) as f32;
+        // Truncate into [0,1]
+        if aux_weights[index] < 0. {
+            aux_weights[index] = 0.;
+        } else if aux_weights[index] > 1. {
+            aux_weights[index] = 1.;
+        }
+
+        let mut aux_guessing: Vec<i32> = Vec::new();
+        // Initialize candidate guessing
+        for elem in data.iter() {
+            aux_guessing.push(
+                classifier_1nn_with_weights(data, elem, &aux_weights)
+                    .expect("No coincide el número de pesos  con el de atributos(aux_guessing)"),
+            );
+        }
+        let aux_ev_rate = evaluation_function(
+            class_rate(data, &aux_guessing)
+                .expect("No coincide el número de elementos con el número de <<guessings>"),
+            red_rate(&aux_weights),
+            0.5,
+        );
+
+        if aux_ev_rate > current_ev_rate {
+            current_ev_rate = aux_ev_rate;
+            weights = aux_weights;
+
+            neighbours_without_mutting = 0;
+
+            // Refreshes indexes
+            indexes = (0..num_attrs).collect();
+            indexes.shuffle(&mut rng);
+        } else {
+            neighbours_without_mutting += 1;
+        }
+
+        num_of_mutations += 1;
+    }
+
+    return weights;
 }
 
 /// Calculates the percentage of correctly classified elems
@@ -405,10 +504,81 @@ pub fn evaluation_function(class_rate: f32, red_rate: f32, alpha: f32) -> f32 {
     return alpha * class_rate + (1.0 - alpha) * red_rate;
 }
 
+// ALGORITHMS -------------------------------------------------------------------------
+
+// 1nn -----------------
+pub fn alg_1nn<T: DataElem<T> + Copy + Clone>(
+    training_set: &Vec<T>,
+    test_set: &Vec<T>,
+) -> (f32, f32, f32) {
+    let mut guessin_1nn: Vec<i32> = Vec::new();
+
+    for elem in test_set.iter() {
+        guessin_1nn.push(classifier_1nn(training_set, elem));
+    }
+
+    // Results
+    let c_rate: f32 = class_rate(test_set, &guessin_1nn)
+        .expect("No coincide el numero de elementos del test con el numero de <<guessings>>");
+    let r_rate: f32 = 0.0; // (0 cause all weights are equal to 1)
+    let ev_rate: f32 = evaluation_function(c_rate, r_rate, 0.5);
+
+    return (c_rate, r_rate, ev_rate);
+}
+
+// Relief --------------
+pub fn alg_relief<T: DataElem<T> + Copy + Clone>(
+    training_set: &Vec<T>,
+    test_set: &Vec<T>,
+) -> (f32, f32, f32) {
+    let relief_weights = relief_algorithm(training_set);
+    let mut guessin_relief: Vec<i32> = Vec::new();
+
+    for elem in test_set.iter() {
+        guessin_relief.push(
+            classifier_1nn_with_weights(&training_set, elem, &relief_weights)
+                .expect("No coincide el número de pesos  con el de atributos"),
+        );
+    }
+
+    let c_rate: f32 = class_rate(test_set, &guessin_relief)
+        .expect("No coincide el numero de elementos del test con el numero de <<guessings>>");
+    let r_rate: f32 = red_rate(&relief_weights);
+    let ev_rate: f32 = evaluation_function(c_rate, r_rate, 0.5);
+
+    return (c_rate, r_rate, ev_rate);
+}
+
+// Local Search --------
+pub fn alg_local_search<T: DataElem<T> + Copy + Clone>(
+    training_set: &Vec<T>,
+    test_set: &Vec<T>,
+) -> (f32, f32, f32) {
+    let weights = local_search(training_set);
+
+    let mut guessing: Vec<i32> = Vec::new();
+
+    for elem in test_set.iter() {
+        guessing.push(
+            classifier_1nn_with_weights(&training_set, elem, &weights)
+                .expect("No coincide el número de pesos  con el de atributos"),
+        );
+    }
+
+    let c_rate: f32 = class_rate(test_set, &guessing)
+        .expect("No coincide el numero de elementos del test con el numero de <<guessings>>");
+    let r_rate: f32 = red_rate(&weights);
+    let ev_rate = evaluation_function(c_rate, r_rate, 0.5);
+
+    return (c_rate, r_rate, ev_rate);
+}
+
+// ------------------------------------------------------------------------------------
+
 /// Main function
 fn run() -> Result<(), Box<Error>> {
     let mut data: Vec<TextureRecord> = Vec::new();
-    let mut rdr = csv::Reader::from_path("data/texture-luis.csv")?;
+    let mut rdr = csv::Reader::from_path("data/texture.csv")?;
 
     let mut current_id = 0;
     for result in rdr.records() {
@@ -453,62 +623,59 @@ fn run() -> Result<(), Box<Error>> {
         }
 
         // 1-NN
-        let mut guessin_1nn: Vec<i32> = Vec::new();
+        let mut now = Instant::now();
 
-        for elem in test_set.iter() {
-            guessin_1nn.push(classifier_1nn(&training_set, elem));
-        }
+        let results_1nn = alg_1nn(&training_set, &test_set);
 
-        // Result
-        let c_rate: f32 = class_rate(&test_set, &guessin_1nn)?;
-        // (0 cause all weights are equal to 1)
-        let r_rate: f32 = 0.0;
+        let time_elapsed_1nn = now.elapsed().as_millis();
 
         // Results output
-        println!("Resultados para 1nn (Partición de validación {}):", test);
+        println!("---------- Partición de validación: {} ----------", test);
+        println!("* Resultados utilizando 1nn");
         // Classification rate
-        println!("   Tasa de clasificación: {}", c_rate,);
+        println!("\tTasa de clasificación: {}", results_1nn.0);
         // Reduction rate
-        println!("   Tasa de reducción: {}", r_rate,);
+        println!("\tTasa de reducción: {}", results_1nn.1);
         // Evaluation
-        println!(
-            "   Función de evaluación: {}",
-            evaluation_function(c_rate, r_rate, 0.5),
-        );
+        println!("\tFunción de evaluación: {}", results_1nn.2);
+        // Elapsed time
+        println!("\tTiempo de cálculo: {}ms", time_elapsed_1nn);
 
         // Relief algorithm (greedy)
-        let relief_weights = relief_algorithm(&training_set);
-        let mut guessin_relief: Vec<i32> = Vec::new();
+        now = Instant::now();
 
-        for elem in test_set.iter() {
-            guessin_relief.push(classifier_1nn_with_weights(
-                &training_set,
-                elem,
-                &relief_weights,
-            )?);
-        }
+        let results_relief = alg_relief(&training_set, &test_set);
 
-        // Result
-        let c_rate: f32 = class_rate(&test_set, &guessin_relief)?;
-        // (0 cause all weights are equal to 1)
-        let r_rate: f32 = red_rate(&relief_weights);
+        let time_elapsed_relief = now.elapsed().as_millis();
 
         // Results output
-        println!(
-            "Resultados para Relief (Partición de validación {}):",
-            test
-        );
+        println!("* Resultados utilizando Relief");
         // Classification rate
-        println!("  Tasa de clasificación: {}", c_rate,);
+        println!("\tTasa de clasificación: {}", results_relief.0);
         // Reduction rate
-        println!("  Tasa de reducción: {}", r_rate,);
+        println!("\tTasa de reducción: {}", results_relief.1);
         // Evaluation
-        println!(
-            "   Función de evaluación: {}",
-            evaluation_function(c_rate, r_rate, 0.5),
-        );
+        println!("\tFunción de evaluación: {}", results_relief.2);
+        // Elapsed time
+        println!("\tTiempo de cálculo: {}ms", time_elapsed_relief);
 
-        println!("-------------------------------");
+        // Local search algorithm
+        now = Instant::now();
+
+        let results_local_search = alg_local_search(&training_set, &test_set);
+
+        let time_elapsed_local_search = now.elapsed().as_millis();
+
+        // Results output
+        println!("* Resultados utilizando Busqueda Local");
+        // Classification rate
+        println!("\tTasa de clasificación: {}", results_local_search.0);
+        // Reduction rate
+        println!("\tTasa de reducción: {}", results_local_search.1);
+        // Evaluation
+        println!("\tFunción de evaluación: {}", results_local_search.2);
+        // Elapsed time
+        println!("\tTiempo de cálculo: {}ms", time_elapsed_local_search);
     }
 
     Ok(())
