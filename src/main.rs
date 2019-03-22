@@ -186,6 +186,8 @@ pub fn normalize_data<T: DataElem<T> + Copy + Clone>(data: Vec<T>) -> Vec<T> {
 pub fn make_partitions<T: DataElem<T> + Copy + Clone>(data: &Vec<T>) -> Vec<Vec<T>> {
     let folds = 5;
 
+    // Hash tab that has an entry for every diferent class, and tells where should be
+    // the next elemt
     let mut categories_count = HashMap::new();
     let mut partitions: Vec<Vec<T>> = Vec::new();
 
@@ -194,9 +196,13 @@ pub fn make_partitions<T: DataElem<T> + Copy + Clone>(data: &Vec<T>) -> Vec<Vec<
     }
 
     for example in data.iter() {
+        // If that class was already found, gets the partition that this elem should go
+        // If not, insert a new entry for that class with value 0 (first partition)
         let counter = categories_count.entry(example.get_class()).or_insert(0);
+
         partitions[*counter].push(example.clone());
 
+        // The next elem with same class as elem will go to the next partition
         *counter = (*counter + 1) % folds;
     }
 
