@@ -58,15 +58,34 @@ pub fn eu_dist_with_weigths<T: DataElem<T> + Copy + Clone>(
             * (one.get_attribute(attr) - other.get_attribute(attr))
             * weights[attr];
     }
+
     dist = dist.sqrt();
 
     return Ok(dist);
 }
 
+// ---------------------------------------------------------------------------------
+// Structs for every data set
+// ---------------------------------------------------------------------------------
+
 #[derive(Copy, Clone)]
 struct TextureRecord {
     id: i32,
     attributes: [f32; 40],
+    class: i32,
+}
+
+#[derive(Copy, Clone)]
+struct ColposcopyRecord {
+    id: i32,
+    attributes: [f32; 62],
+    class: i32,
+}
+
+#[derive(Copy, Clone)]
+struct IonosphereRecord {
+    id: i32,
+    attributes: [f32; 34],
     class: i32,
 }
 
@@ -109,13 +128,6 @@ impl DataElem<TextureRecord> for TextureRecord {
     }
 }
 
-#[derive(Copy, Clone)]
-struct ColposcopyRecord {
-    id: i32,
-    attributes: [f32; 62],
-    class: i32,
-}
-
 impl DataElem<ColposcopyRecord> for ColposcopyRecord {
     fn new() -> ColposcopyRecord {
         ColposcopyRecord {
@@ -153,13 +165,6 @@ impl DataElem<ColposcopyRecord> for ColposcopyRecord {
     fn set_attribute(&mut self, index: usize, attr: f32) {
         self.attributes[index] = attr;
     }
-}
-
-#[derive(Copy, Clone)]
-struct IonosphereRecord {
-    id: i32,
-    attributes: [f32; 34],
-    class: i32,
 }
 
 impl DataElem<IonosphereRecord> for IonosphereRecord {
@@ -241,10 +246,12 @@ pub fn normalize_data<T: DataElem<T> + Copy + Clone>(data: Vec<T>) -> Vec<T> {
 
     for elem in new_data.iter_mut() {
         for attr in 0..num_attrs {
-            elem.set_attribute(
-                attr,
-                (elem.get_attribute(attr) - mins[attr]) / max_distances[attr],
-            );
+            if max_distances[attr] != 0.0 {
+                elem.set_attribute(
+                    attr,
+                    (elem.get_attribute(attr) - mins[attr]) / max_distances[attr],
+                );
+            }
         }
     }
 
@@ -340,7 +347,7 @@ pub fn classifier_1nn_with_weights<T: DataElem<T> + Copy + Clone>(
 pub fn relief_algorithm<T: DataElem<T> + Copy + Clone>(data: &Vec<T>) -> Vec<f32> {
     let num_attrs = T::get_num_attributes();
     let mut weights = vec![0.0; num_attrs];
-    let weights_eu_dist = vec![1.; num_attrs];
+    let weights_eu_dist = vec![1.0; num_attrs];
 
     for elem in data.iter() {
         let mut nearest_enemy_index = 0;
@@ -378,6 +385,7 @@ pub fn relief_algorithm<T: DataElem<T> + Copy + Clone>(data: &Vec<T>) -> Vec<f32
                 (elem.get_attribute(attr) - nearest_ally.get_attribute(attr)).abs();
             let attr_enemy_dist =
                 (elem.get_attribute(attr) - nearest_enemy.get_attribute(attr)).abs();
+
             weights[attr] += attr_enemy_dist - attr_ally_dist;
         }
     }
@@ -645,26 +653,35 @@ pub fn alg_local_search<T: DataElem<T> + Copy + Clone>(
 
 // ------------------------------------------------------------------------------------
 
-/// Main function
-fn run() -> Result<(), Box<Error>> {
-    let mut data: Vec<TextureRecord> = Vec::new();
-    let mut rdr = csv::Reader::from_path("data/texture.csv")?;
+/// Runs every algorithm using the data set passed as parameter
+/// and prints results.
+/// Precondition: Generic tipe must coincide with file
+///
+/// # Arguments
+///
+/// * `file_name` - Name of file containing data
+///
+/// # Returns
+/// A Result that contains the error in case it fails.
+pub fn run<T: DataElem<T> + Copy + Clone>(file_name: &str) -> Result<(), Box<Error>> {
+    let mut data: Vec<T> = Vec::new();
+    let mut rdr = csv::Reader::from_path(file_name)?;
 
     let mut current_id = 0;
     for result in rdr.records() {
-        let mut aux_record = TextureRecord::new();
+        let mut aux_record = T::new();
         let record = result?;
 
         let mut counter = 0;
 
-        aux_record.id = current_id;
+        aux_record.set_id(current_id);
 
         for field in record.iter() {
             // CSV structure: ... 40 data ... , class
-            if counter != TextureRecord::get_num_attributes() {
-                aux_record.attributes[counter] = field.parse::<f32>().unwrap();
+            if counter != T::get_num_attributes() {
+                aux_record.set_attribute(counter, field.parse::<f32>().unwrap());
             } else {
-                aux_record.class = field.parse::<i32>().unwrap();
+                aux_record.set_class(field.parse::<i32>().unwrap());
             }
 
             counter += 1;
@@ -687,8 +704,8 @@ fn run() -> Result<(), Box<Error>> {
 
     for test in 0..5 {
         // Stablish training and test sets
-        let mut training_set: Vec<TextureRecord> = Vec::new();
-        let mut test_set: Vec<TextureRecord> = Vec::new();
+        let mut training_set: Vec<T> = Vec::new();
+        let mut test_set: Vec<T> = Vec::new();
 
         for part in 0..5 {
             if part != test {
@@ -755,8 +772,21 @@ fn run() -> Result<(), Box<Error>> {
 }
 
 fn main() {
-    if let Err(err) = run() {
-        println!("error: {}", err);
+    println!("Texture--------------");
+    if let Err(err) = run::<TextureRecord>("data/texture.csv") {
+        println!("error en texture: {}", err);
+        process::exit(1);
+    }
+
+    println!("Colposcopy-----------");
+    if let Err(err) = run::<ColposcopyRecord>("data/colposcopy.csv") {
+        println!("error en colposcopy: {}", err);
+        process::exit(1);
+    }
+
+    println!("Ionosphere-----------");
+    if let Err(err) = run::<IonosphereRecord>("data/ionosphere.csv") {
+        println!("error ionosphere: {}", err);
         process::exit(1);
     }
 }
