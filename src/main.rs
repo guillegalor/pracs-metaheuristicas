@@ -2,8 +2,6 @@ extern crate csv;
 #[macro_use]
 extern crate prettytable;
 
-use prettytable::{Cell, Row, Table};
-
 use rand::distributions::{Distribution, Normal, Uniform};
 use rand::seq::SliceRandom;
 use rand::thread_rng;
@@ -83,6 +81,98 @@ impl DataElem<TextureRecord> for TextureRecord {
 
     fn get_num_attributes() -> usize {
         return 40;
+    }
+
+    fn get_id(&self) -> i32 {
+        return self.id;
+    }
+
+    fn get_class(&self) -> i32 {
+        return self.class;
+    }
+
+    // NOTE Not sure if we should check if index is in range
+    fn get_attribute(&self, index: usize) -> f32 {
+        return self.attributes[index];
+    }
+
+    fn set_id(&mut self, id: i32) {
+        self.id = id;
+    }
+
+    fn set_class(&mut self, class: i32) {
+        self.class = class;
+    }
+
+    fn set_attribute(&mut self, index: usize, attr: f32) {
+        self.attributes[index] = attr;
+    }
+}
+
+#[derive(Copy, Clone)]
+struct ColposcopyRecord {
+    id: i32,
+    attributes: [f32; 62],
+    class: i32,
+}
+
+impl DataElem<ColposcopyRecord> for ColposcopyRecord {
+    fn new() -> ColposcopyRecord {
+        ColposcopyRecord {
+            id: -1,
+            attributes: [0.0; 62],
+            class: -1,
+        }
+    }
+
+    fn get_num_attributes() -> usize {
+        return 62;
+    }
+
+    fn get_id(&self) -> i32 {
+        return self.id;
+    }
+
+    fn get_class(&self) -> i32 {
+        return self.class;
+    }
+
+    // NOTE Not sure if we should check if index is in range
+    fn get_attribute(&self, index: usize) -> f32 {
+        return self.attributes[index];
+    }
+
+    fn set_id(&mut self, id: i32) {
+        self.id = id;
+    }
+
+    fn set_class(&mut self, class: i32) {
+        self.class = class;
+    }
+
+    fn set_attribute(&mut self, index: usize, attr: f32) {
+        self.attributes[index] = attr;
+    }
+}
+
+#[derive(Copy, Clone)]
+struct IonosphereRecord {
+    id: i32,
+    attributes: [f32; 34],
+    class: i32,
+}
+
+impl DataElem<IonosphereRecord> for IonosphereRecord {
+    fn new() -> IonosphereRecord {
+        IonosphereRecord {
+            id: -1,
+            attributes: [0.0; 34],
+            class: -1,
+        }
+    }
+
+    fn get_num_attributes() -> usize {
+        return 34;
     }
 
     fn get_id(&self) -> i32 {
