@@ -9,6 +9,10 @@ use std::error::Error;
 use std::process;
 use std::time::Instant;
 
+// ---------------------------------------------------------------------------------
+// DataElem definitions and specific functions for it
+// ---------------------------------------------------------------------------------
+
 /// Trait for CSV data
 ///
 /// **Note**: The struct implementing this trait must also implement `Copy` and `Clone`.
@@ -22,6 +26,39 @@ pub trait DataElem<T> {
     fn set_id(&mut self, id: i32);
     fn set_class(&mut self, class: i32);
     fn set_attribute(&mut self, index: usize, attr: f32);
+}
+
+/// Calculate the "euclidian_distance" distance between two `T` elements
+/// asigning a weight to every attribute
+///
+/// # Arguments
+///
+/// * `one` - First `T` element
+/// * `other` - Second `T` element
+/// * `weights` - Vec with a weight(between 0 and 1) for every attribute
+///
+/// # Returns
+/// A `Result ` with:
+/// * `Err(&'static str)` if the number or weights doesn't coincide with the number ot attrs of `T`
+/// * `Ok(f32)`
+pub fn eu_dist_with_weigths<T: DataElem<T> + Copy + Clone>(
+    one: &T,
+    other: &T,
+    weights: &Vec<f32>,
+) -> Result<f32, &'static str> {
+    if T::get_num_attributes() != weights.len() {
+        return Err("El numero de pesos no coincide con el numero de atributos");
+    }
+
+    let mut dist = 0.0;
+    for attr in 0..T::get_num_attributes() {
+        dist += (one.get_attribute(attr) - other.get_attribute(attr))
+            * (one.get_attribute(attr) - other.get_attribute(attr))
+            * weights[attr];
+    }
+    dist = dist.sqrt();
+
+    return Ok(dist);
 }
 
 #[derive(Copy, Clone)]
@@ -71,62 +108,7 @@ impl DataElem<TextureRecord> for TextureRecord {
 }
 
 //---------------------------------------------------------------------------------------
-
-/// Calculate the euclidian_distance distance between two `T` elements .
-///
-/// # Arguments
-///
-/// * `one` - First `T` element
-/// * `other` - Second `T` element
-///
-/// # Returns
-/// Returns the distance as a f32
-
-pub fn euclidian_distance<T: DataElem<T> + Copy + Clone>(one: &T, other: &T) -> f32 {
-    let mut dist: f32 = 0.0;
-    for attr in 0..T::get_num_attributes() {
-        dist += (one.get_attribute(attr) - other.get_attribute(attr))
-            * (one.get_attribute(attr) - other.get_attribute(attr));
-    }
-
-    dist = dist.sqrt();
-
-    return dist;
-}
-
-/// Calculate the "euclidian_distance" distance between two `T` elements
-/// asigning a weight to every attribute
-///
-/// # Arguments
-///
-/// * `one` - First `T` element
-/// * `other` - Second `T` element
-/// * `weights` - Vec with a weight(between 0 and 1) for every attribute
-///
-/// # Returns
-/// A `Result ` with:
-/// * `Err(&'static str)` if the number or weights doesn't coincide with the number ot attrs of `T`
-/// * `Ok(f32)`
-pub fn eu_dist_with_weigths<T: DataElem<T> + Copy + Clone>(
-    one: &T,
-    other: &T,
-    weights: &Vec<f32>,
-) -> Result<f32, &'static str> {
-    if T::get_num_attributes() != weights.len() {
-        return Err("El numero de pesos no coincide con el numero de atributos");
-    }
-
-    let mut dist = 0.0;
-    for attr in 0..T::get_num_attributes() {
-        dist += (one.get_attribute(attr) - other.get_attribute(attr))
-            * (one.get_attribute(attr) - other.get_attribute(attr))
-            * weights[attr];
-    }
-    dist = dist.sqrt();
-
-    return Ok(dist);
-}
-
+// Auxiliary functions to treat data set
 //---------------------------------------------------------------------------------------
 
 /// Normalize attributes of a vec of `T` so everyone is in [0,1]
@@ -209,34 +191,6 @@ pub fn make_partitions<T: DataElem<T> + Copy + Clone>(data: &Vec<T>) -> Vec<Vec<
     return partitions;
 }
 
-/// Classifies one `T` item using a Vec of `T` elems and the 1nn algorithm
-///
-/// # Arguments
-///
-/// * `data` - Vec of `T` used as knowledge
-/// * `item` - `T` elem being classified
-///
-/// # Returns
-/// An i32 which represents the guessed class of `item`
-
-pub fn classifier_1nn<T: DataElem<T> + Copy + Clone>(data: &Vec<T>, item: &T) -> i32 {
-    let mut c_min = data[0].get_class();
-    let mut d_min = euclidian_distance(item, &data[0]);
-
-    for example in data.iter().skip(1) {
-        if example.get_id() != item.get_id() {
-            let distance = euclidian_distance(item, example);
-
-            if distance < d_min {
-                c_min = example.get_class();
-                d_min = distance;
-            }
-        }
-    }
-
-    return c_min;
-}
-
 /// Classifies one `T` item using a Vec of `T` elems, a Vec of weights and the
 /// 1nn algorithm
 ///
@@ -288,6 +242,7 @@ pub fn classifier_1nn_with_weights<T: DataElem<T> + Copy + Clone>(
 pub fn relief_algorithm<T: DataElem<T> + Copy + Clone>(data: &Vec<T>) -> Vec<f32> {
     let num_attrs = T::get_num_attributes();
     let mut weights = vec![0.0; num_attrs];
+    let weights_eu_dist = vec![1.; num_attrs];
 
     for elem in data.iter() {
         let mut nearest_enemy_index = 0;
@@ -297,7 +252,8 @@ pub fn relief_algorithm<T: DataElem<T> + Copy + Clone>(data: &Vec<T>) -> Vec<f32
 
         for (index, candidate) in data.iter().enumerate() {
             if elem.get_id() != candidate.get_id() {
-                let aux_distance = euclidian_distance(elem, candidate);
+                let aux_distance = eu_dist_with_weigths(elem, candidate, &weights_eu_dist)
+                    .expect("Euclidian distance with weights relief algorithm");
 
                 // Ally search
                 if elem.get_class() == candidate.get_class() {
@@ -518,9 +474,13 @@ pub fn alg_1nn<T: DataElem<T> + Copy + Clone>(
     test_set: &Vec<T>,
 ) -> (f32, f32, f32) {
     let mut guessin_1nn: Vec<i32> = Vec::new();
+    let weights_eu_dist = vec![1.; T::get_num_attributes()];
 
     for elem in test_set.iter() {
-        guessin_1nn.push(classifier_1nn(training_set, elem));
+        guessin_1nn.push(
+            classifier_1nn_with_weights(training_set, elem, &weights_eu_dist)
+                .expect("Classifier 1nn en alg_1nn"),
+        );
     }
 
     // Results
