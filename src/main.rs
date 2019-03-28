@@ -1,4 +1,8 @@
 extern crate csv;
+#[macro_use]
+extern crate prettytable;
+
+use prettytable::{Cell, Row, Table};
 
 use rand::distributions::{Distribution, Normal, Uniform};
 use rand::seq::SliceRandom;
@@ -190,6 +194,10 @@ pub fn make_partitions<T: DataElem<T> + Copy + Clone>(data: &Vec<T>) -> Vec<Vec<
 
     return partitions;
 }
+
+//---------------------------------------------------------------------------------------
+// Core functions for algorithms
+//---------------------------------------------------------------------------------------
 
 /// Classifies one `T` item using a Vec of `T` elems, a Vec of weights and the
 /// 1nn algorithm
@@ -398,6 +406,10 @@ pub fn local_search<T: DataElem<T> + Copy + Clone>(data: &Vec<T>) -> Vec<f32> {
     return weights;
 }
 
+//---------------------------------------------------------------------------------------
+// Evaluation function for results
+//---------------------------------------------------------------------------------------
+
 /// Calculates the percentage of correctly classified elems
 ///
 /// # Arguments
@@ -466,7 +478,9 @@ pub fn evaluation_function(class_rate: f32, red_rate: f32, alpha: f32) -> f32 {
     return alpha * class_rate + (1.0 - alpha) * red_rate;
 }
 
-// ALGORITHMS -------------------------------------------------------------------------
+//---------------------------------------------------------------------------------------
+// Full algorithms execution functions
+//---------------------------------------------------------------------------------------
 
 // 1nn -----------------
 pub fn alg_1nn<T: DataElem<T> + Copy + Clone>(
@@ -575,6 +589,12 @@ fn run() -> Result<(), Box<Error>> {
 
     let partitions = make_partitions(&data);
 
+    // Output tables declaration
+    let mut table_1nn = table!(["Partición", "Tasa_clas", "Tasa_red", "Agregado", "Tiempo"]);
+    let mut table_relief = table!(["Partición", "Tasa_clas", "Tasa_red", "Agregado", "Tiempo"]);
+    let mut table_localsearch =
+        table!(["Partición", "Tasa_clas", "Tasa_red", "Agregado", "Tiempo"]);
+
     for test in 0..5 {
         // Stablish training and test sets
         let mut training_set: Vec<TextureRecord> = Vec::new();
@@ -595,17 +615,13 @@ fn run() -> Result<(), Box<Error>> {
 
         let time_elapsed_1nn = now.elapsed().as_millis();
 
-        // Results output
-        println!("---------- Partición de validación: {} ----------", test);
-        println!("* Resultados utilizando 1nn");
-        // Classification rate
-        println!("\tTasa de clasificación: {}", results_1nn.0);
-        // Reduction rate
-        println!("\tTasa de reducción: {}", results_1nn.1);
-        // Evaluation
-        println!("\tFunción de evaluación: {}", results_1nn.2);
-        // Elapsed time
-        println!("\tTiempo de cálculo: {}ms", time_elapsed_1nn);
+        table_1nn.add_row(row![
+            test,
+            results_1nn.0,
+            results_1nn.1,
+            results_1nn.2,
+            time_elapsed_1nn
+        ]);
 
         // Relief algorithm (greedy)
         now = Instant::now();
@@ -614,16 +630,13 @@ fn run() -> Result<(), Box<Error>> {
 
         let time_elapsed_relief = now.elapsed().as_millis();
 
-        // Results output
-        println!("* Resultados utilizando Relief");
-        // Classification rate
-        println!("\tTasa de clasificación: {}", results_relief.0);
-        // Reduction rate
-        println!("\tTasa de reducción: {}", results_relief.1);
-        // Evaluation
-        println!("\tFunción de evaluación: {}", results_relief.2);
-        // Elapsed time
-        println!("\tTiempo de cálculo: {}ms", time_elapsed_relief);
+        table_relief.add_row(row![
+            test,
+            results_relief.0,
+            results_relief.1,
+            results_relief.2,
+            time_elapsed_relief
+        ]);
 
         // Local search algorithm
         now = Instant::now();
@@ -632,17 +645,21 @@ fn run() -> Result<(), Box<Error>> {
 
         let time_elapsed_local_search = now.elapsed().as_millis();
 
-        // Results output
-        println!("* Resultados utilizando Busqueda Local");
-        // Classification rate
-        println!("\tTasa de clasificación: {}", results_local_search.0);
-        // Reduction rate
-        println!("\tTasa de reducción: {}", results_local_search.1);
-        // Evaluation
-        println!("\tFunción de evaluación: {}", results_local_search.2);
-        // Elapsed time
-        println!("\tTiempo de cálculo: {}ms", time_elapsed_local_search);
+        table_localsearch.add_row(row![
+            test,
+            results_local_search.0,
+            results_local_search.1,
+            results_local_search.2,
+            time_elapsed_local_search
+        ]);
     }
+
+    println!(" Resultados utilizando 1nn");
+    table_1nn.printstd();
+    println!(" Resultados utilizando Relief");
+    table_relief.printstd();
+    println!(" Resultados utilizando Busqueda Local");
+    table_localsearch.printstd();
 
     Ok(())
 }
