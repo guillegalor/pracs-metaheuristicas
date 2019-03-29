@@ -3,8 +3,8 @@ extern crate csv;
 extern crate prettytable;
 
 use rand::distributions::{Distribution, Normal, Uniform};
+use rand::prelude::*;
 use rand::seq::SliceRandom;
-use rand::thread_rng;
 
 use std::collections::HashMap;
 use std::error::Error;
@@ -413,7 +413,12 @@ pub fn relief_algorithm<T: DataElem<T> + Copy + Clone>(data: &Vec<T>) -> Vec<f32
 // Return the weights vec and the evaluation rate
 pub fn local_search<T: DataElem<T> + Copy + Clone>(data: &Vec<T>) -> Vec<f32> {
     let num_attrs = T::get_num_attributes();
-    let mut rng = thread_rng();
+
+    let seed = [
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
+        26, 27, 28, 29, 30, 31, 32,
+    ];
+    let mut rng: StdRng = SeedableRng::from_seed(seed);
 
     // Initialize vector of indexes and shuffles it
     let mut indexes: Vec<usize> = (0..num_attrs).collect();
@@ -453,8 +458,10 @@ pub fn local_search<T: DataElem<T> + Copy + Clone>(data: &Vec<T>) -> Vec<f32> {
     while neighbours_without_mutting < max_neighbour_without_muting
         && num_of_mutations < max_mutations
     {
+        println!("Pesos: {:?}", indexes);
         let mut aux_weights = weights.clone();
 
+        // Refreshes index vector
         if indexes.is_empty() {
             indexes = (0..num_attrs).collect();
             indexes.shuffle(&mut rng);
@@ -462,7 +469,9 @@ pub fn local_search<T: DataElem<T> + Copy + Clone>(data: &Vec<T>) -> Vec<f32> {
 
         let index = indexes.pop().expect("El vector está vacio");
 
+        // Mutation
         aux_weights[index] += normal.sample(&mut rng) as f32;
+
         // Truncate into [0,1]
         if aux_weights[index] < 0. {
             aux_weights[index] = 0.;
