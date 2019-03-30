@@ -1,0 +1,577 @@
+\documentclass[size=a4, parskip=half, titlepage=false, toc=flat, toc=bib, 12pt]{scrartcl}
+
+\setuptoc{toc}{leveldown}
+
+% Ajuste de las líneas y párrafos
+\linespread{1.2}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{12pt}
+
+% Español
+\usepackage[spanish, es-tabla]{babel}
+
+% Matemáticas
+\usepackage{amsmath}
+\usepackage{amsthm}
+
+% Fuentes
+\usepackage{newpxtext,newpxmath}
+\usepackage[scale=.9]{FiraMono}
+\usepackage{FiraSans}
+\usepackage[T1]{fontenc}
+
+\defaultfontfeatures{Ligatures=TeX,Numbers=Lining}
+\usepackage[activate={true,nocompatibility},final,tracking=true,factor=1100,stretch=10,shrink=10]{microtype}
+\SetTracking{encoding={*}, shape=sc}{0}
+
+\usepackage{graphicx}
+\usepackage{float}
+
+% Mejores tablas
+\usepackage{booktabs}
+
+\usepackage{adjustbox}
+% COLORES
+
+\usepackage{xcolor}
+
+\definecolor{verde}{HTML}{007D51}
+\definecolor{esmeralda}{HTML}{045D56}
+\definecolor{salmon}{HTML}{FF6859}
+\definecolor{amarillo}{HTML}{FFAC12}
+\definecolor{morado}{HTML}{A932FF}
+\definecolor{azul}{HTML}{0082FB}
+\definecolor{error}{HTML}{b00020}
+
+% ENTORNOS
+\usepackage[skins, listings, theorems]{tcolorbox}
+
+\newtcolorbox{recuerda}{
+  enhanced,
+%  sharp corners,
+  frame hidden,
+  colback=black!10,
+	lefttitle=0pt,
+  coltitle=black,
+  fonttitle=\bfseries\sffamily\scshape,
+  titlerule=0.8mm,
+  titlerule style=black,
+  title=\raisebox{-0.6ex}{\small RECUERDA}
+}
+
+\newtcolorbox{nota}{
+  enhanced,
+%  sharp corners,
+  frame hidden,
+  colback=black!10,
+	lefttitle=0pt,
+  coltitle=black,
+  fonttitle=\bfseries\sffamily\scshape,
+  titlerule=0.8mm,
+  titlerule style=black,
+  title=\raisebox{-0.6ex}{\small NOTA}
+}
+
+\newtcolorbox{error}{
+  enhanced,
+%  sharp corners,
+  frame hidden,
+  colback=error!10,
+	lefttitle=0pt,
+  coltitle=error,
+  fonttitle=\bfseries\sffamily\scshape,
+  titlerule=0.8mm,
+  titlerule style=error,
+  title=\raisebox{-0.6ex}{\small ERROR}
+}
+
+\newtcblisting{shell}{
+  enhanced,
+  colback=black!10,
+  colupper=black,
+  frame hidden,
+  opacityback=0,
+  coltitle=black,
+  fonttitle=\bfseries\sffamily\scshape,
+  %titlerule=0.8mm,
+  %titlerule style=black,
+  %title=Consola,
+  listing only,
+  listing options={
+    style=tcblatex,
+    language=sh,
+    breaklines=true,
+    postbreak=\mbox{\textcolor{black}{$\hookrightarrow$}\space},
+    emph={guille@guille-pc},
+    emphstyle={\bfseries},
+  },
+}
+
+\newtcbtheorem[number within=section]{teor}{\small TEOREMA}{
+  enhanced,
+  sharp corners,
+  frame hidden,
+  colback=white,
+  coltitle=black,
+  fonttitle=\bfseries\sffamily,
+  %separator sign=\raisebox{-0.65ex}{\Large\MI\symbol{58828}},
+  description font=\itshape
+}{teor}
+
+\newtcbtheorem[number within=section]{prop}{\small PROPOSICIÓN}{
+  enhanced,
+  sharp corners,
+  frame hidden,
+  colback=white,
+  coltitle=black,
+  fonttitle=\bfseries\sffamily,
+  %separator sign=\raisebox{-0.65ex}{\Large\MI\symbol{58828}},
+  description font=\itshape
+}{prop}
+
+\newtcbtheorem[number within=section]{cor}{\small COROLARIO}{
+  enhanced,
+  sharp corners,
+  frame hidden,
+  colback=white,
+  coltitle=black,
+  fonttitle=\bfseries\sffamily,
+  %separator sign=\raisebox{-0.65ex}{\Large\MI\symbol{58828}},
+  description font=\itshape
+}{cor}
+
+\newtcbtheorem[number within=section]{defi}{\small DEFINICIÓN}{
+  enhanced,
+  sharp corners,
+  frame hidden,
+  colback=white,
+  coltitle=black,
+  fonttitle=\bfseries\sffamily,
+  %separator sign=\raisebox{-0.65ex}{\Large\MI\symbol{58828}},
+  description font=\itshape
+}{defi}
+
+\newtcbtheorem{ejer}{\small EJERCICIO}{
+  enhanced,
+  sharp corners,
+  frame hidden,
+  left=0mm,
+  right=0mm,
+  colback=white,
+  coltitle=black,
+  fonttitle=\bfseries\sffamily,
+  %separator sign=\raisebox{-0.65ex}{\Large\MI\symbol{58828}},
+  description font=\itshape,
+  nameref/.style={},
+}{ejer}
+
+% CÓDIGO
+\usepackage{listings}
+
+% CABECERAS
+\pagestyle{headings}
+\setkomafont{pageheadfoot}{\normalfont\normalcolor\sffamily\small}
+\setkomafont{pagenumber}{\normalfont\sffamily}
+
+% ALGORITMOS
+\usepackage[vlined,linesnumbered]{algorithm2e}
+
+% Formato de los pies de figura
+\setkomafont{captionlabel}{\scshape}
+\SetAlCapFnt{\normalfont\scshape}
+\SetAlgorithmName{Algoritmo}{Algoritmo}{Lista de algoritmos}
+
+% BIBLIOGRAFÍA
+%\usepackage[sorting=none]{biblatex}
+%\addbibresource{bibliografia.bib}
+
+\begin{document}
+
+\renewcommand{\proofname}{\normalfont\sffamily\bfseries\small DEMOSTRACIÓN}
+
+\title{Problema del Aprendizaje de Pesos}
+\subject{Metaheurísticas}
+\author{Guillermo Galindo Ortuño\\
+    4 del Doble Grado en Informática y Matemáticas\\
+    Guillegalor@gmail.com\\
+    25619527b}
+\publishers{\vspace{2cm}\includegraphics[height=2.5cm]{UGR}\vspace{1cm}}
+\maketitle
+
+\tableofcontents
+\newpage
+
+\section{Introducción}
+
+El objetivo de esta práctica es, a partir de un conjunto de muestras de elementos ya clasificados, construir un algoritmo que utilizando la información de la que dispone sea capaz de clasificar nuevos elementos. \\
+
+En nuestro caso disponemos de tres conjuntos distintos de datos: \textit{texture}, \textit{colposcopy} e \textit{ionosphere}. Cada elemento de este conjunto esta representado por un número fijo de atributos de tipo real, asi como su clasificación está representada por un número entero. Cada conjunto de datos está almacenado en su respectivo archivo csv (utilizamos csv en lugar del formato original arff por comodidad).
+
+\newpage
+
+\section{Consideraciones previas}
+\subsection{Esquemas de representación}
+En primer lugar, para representar cada tipo de dato distinto utilizamos una interfaz llamada DataElem, de manera que cualquier estructura de datos que implemente DataElem deberá tener definidos los siguientes métodos:
+\begin{itemize}
+    \item \texttt{\textbf{fn} new()}. Función de clase que devuelve un elemento por defecto
+    \item \texttt{\textbf{fn} get\_num\_attributes().} Función de clase que devuelve el número de atributos que tiene dicho tipo de dato.
+    \item \texttt{\textbf{fn} get\_id()}  Función que devuelve un identificador de un elemento.
+    \item \texttt{\textbf{fn} get\_class()} Función que devuelve la clase de un elemento.
+    \item \texttt{\textbf{fn} get\_attr(i)} Función que devuelve el atributo i-ésimo de un elemento.
+    \item \texttt{\textbf{fn} set\_id(i)} Función que asigna al identificador de un elemento el valor indicado en el parámetro \texttt{i}.
+    \item \texttt{\textbf{fn} set\_class(c)} Función que asigna a la clase de un elemento el valor indicado en el parámetro \texttt{c}.
+    \item \texttt{\textbf{fn} set\_attribute(i, v)} Función que asigna al atributo i-ésimo de un elemento el valor indicado en el parámetro \texttt{a}.
+\end{itemize}
+
+Dicho esto, hemos utilizado tres estructuras de datos que implementan esta interfaz:
+\begin{itemize}
+    \item \texttt{TextureRecord}, la cuál contiene un identificador, un array con 40 valores reales para almacenar los atributos, y un entero que representa la clase de dicho elemento.
+    \item \texttt{ColposcopyRecord}, la cuál contiene un identificador, un array con 62 valores realespara almacenar los atributos, y un entero que representa la clase de dicho elemento.
+    \item \texttt{TextureRecord}, la cuál contiene un identificador, un array con 34 valores reales para almacenar los atributos, y un entero que representa la clase de dicho elemento.
+\end{itemize}
+
+\subsection{Operadores comunes}
+Dados dos elementos de un tipo de dato que implemente dicha interfaz, hemos definido la función que calcula la \textbf{distancia euclídea} ponderada por un vector de pesos de la siguiente forma:
+
+\begin{verbatim}
+
+euclidean_distance_with_weigths(elem_1, elem_2, weights[]){
+    distance = 0;
+
+    for ind in 0 to num_attributtes {
+        distance += (elem_1.attributes(ind) - elem_2.attributes(ind))
+            * (elem_1.attributes(ind) - elem_2.attributes(ind))
+            * weights[ind];
+    }
+
+    distance = square_root(distance);
+
+    return distance;
+}
+
+\end{verbatim}
+Por comodidad, cuando nos refiramos a la distancia euclídea usual omitiremos que llamamos a esta función con un vector de pesos con todos los valores iguales a 1 y únicamente escribiremos \texttt{euclidean\_distance} \\
+
+Utilizando dicha distancia, definimos la función que actua como el \textbf{clasificador 1nn} así:
+\begin{verbatim}
+classifier_1nn_with_weights(data[], item, weights[]) {
+    class_min = data[0].class;
+    dist_min = eu_dist_with_weigths(item, data[0], weights);
+
+    // Discards weights lower than 0.2
+    for w in weights {
+        if w < 0.2 {
+            w = 0.0;
+        }
+    }
+
+    for example in data {
+        if example.id != item.id {
+            aux_distance = euclidean_distance_with_weigths
+                (item, example, weights);
+            if aux_distance < d_min {
+                class_min = example.class;
+                dist_min = aux_distance;
+            }
+        }
+    }
+
+    return c_min;
+}
+
+\end{verbatim}
+
+Además hemos definido dos funciones más que toman como argumento un conjunto de elementos de un tipo que implemente \texttt{DataElem}.\\
+
+La primera es \texttt{normalize\_data}, la cual devuelve un conjunto con el mismo número de elementos que el original, con la diferencia de que en este nuevo conjunto todos los elementos tienen sus atributos normalizados respecto al conjunto original. \\
+
+La segunda es \texttt{make\_partitions}, la cual devuelve un vector con 5 conjuntos de elementos que representan 5 particiones, que mantienen en la medida de lo posible la distribución de clases del conjunto original.\\
+
+\subsection{Función objetivo}
+Fijado un problema de clasificación, para evaluar el rendimiento de un vector de pesos calculado sobre un conjunto de datos utilizaremos tres funciones:
+\begin{itemize}
+    \item \texttt{class\_rate}. A partir de la predicción obtenida mediante el clasificador 1nn utilizando dicho vector de pesos, devuelve porcentaje de elementos bien clasificados(tasa de clasficación):
+    \[
+    class\_rate = 100 \cdot \frac{n}{N}
+    .\]
+Donde $n$ es el número de elementos bien clasificados, y $N$ es el número de elementos total en el conjunto
+    \item \texttt{red\_rate} A partir del vector de pesos, devuelve el número de pesos menores de $0.2$, que son los que no se tendrán en cuenta en el clasificador(tasa de reducción).
+    \[
+    red\_rate = 100 \cdot \frac{w}{W}
+    .\]
+Donde $w$ es el número de pesos con valor menor a $0.2$ y $W$ es el número total de pesos.
+    \item \texttt{evaluation\_function} A partir de la tasa de clasificación y la tasa de reducción, devuelve una suma ponderada de ambas. En nuestro caso,$\alpha$ vale $0.5$, luego la ponderación es la misma para ambas tasas.
+    \[
+    evaluation\_function = \alpha \cdot class\_rate + (1-\alpha)\cdot red\_rate
+    .\]
+\end{itemize}
+
+\newpage
+\section{Descripción de los algoritmos}
+\subsection{Algoritmo RELIEF (greedy)}
+
+El algoritmo RELIEF itera sobre todos los elementos del conjunto de datos que recibe, así que de ahora en adelante nos referiremos al elemento actual como \texttt{current\_elem}, y hasta que lo mencionemos de nuevo todo el código estará dentro de dicho bucle.
+\begin{verbatim}
+
+weights[] = {0};
+
+for current_elem in data {
+    ...
+}
+\end{verbatim}
+
+En primer lugar calcula el \textit{aliado} y el \textit{enemigo} más cercano para cada elemento utilizando la distancia euclídea usual.
+\begin{verbatim}
+index = 0;
+nearest_enemy_index = 0;
+nearest_ally_index = 0;
+best_enemy_distance = MAX_VALUE;
+best_ally_distance = MAX_VALUE;
+
+for candidate in data {
+    if elem.id != candidate.id {
+        let aux_distance = euclidean_distance
+            (current_elem, candidate);
+
+        // Ally search
+        if elem.class == candidate.class {
+            if aux_distance < best_ally_distance {
+                best_ally_distance = aux_distance;
+                nearest_ally_index = index;
+            }
+        }
+        // Enemy search
+        else {
+            if aux_distance < best_enemy_distance {
+                best_enemy_distance = aux_distance;
+                nearest_enemy_index = index;
+            }
+        }
+    }
+}
+
+let nearest_ally = data[nearest_ally_index];
+let nearest_enemy = data[nearest_enemy_index];
+\end{verbatim}
+
+A continuación, a cada peso le suma la distancia entre el atributo correspondiente del elemento actual(\texttt{current\_elem}) y de su aliado más cercano. Análogamente le resta la distancia respectiva a su enemigo más cercano.
+
+\begin{verbatim}
+for attr in 0 to num_attrs {
+    attr_ally_dist =
+        (elem.attributes(attr) - nearest_ally.attributes(attr)).abs;
+    attr_enemy_dist =
+        (elem.attributes(attr) - nearest_enemy.attributes(attr)).abs;
+
+    weights[attr] += attr_enemy_dist - attr_ally_dist;
+}
+\end{verbatim}
+
+Por último, fuera del bucle principal, truncamos los pesos negativos al intervalo $[0,+\infty]$ y luego normalizamos utilizando el máximo de todos los pesos.
+\begin{verbatim}
+max_weight = weights[0];
+
+for w in weights {
+    if w > max_weight
+        max_weight = w;
+}
+
+for w in weights {
+    if w < 0.0 {
+        w = 0.0;
+    } else {
+        w = w / max_weight;
+    }
+}
+
+return weights;
+\end{verbatim}
+
+\subsection{Algoritmo de búsqueda local}
+En primer lugar, inicializamos todas las variables necesarias, y clasificamos el conjunto de datos utilizando un conjunto de pesos generados aleatoriamente.
+\begin{verbatim}
+local_search(data[], rng) {
+
+    indexes[];
+    // Nos referiremos a estas dos lineas como fill_and_refresh_indexes()
+    indexes = {0, ..., num_attrs};
+    indexes.shuffle(rng);
+
+    // Local search parameters
+    num_of_mutations = 0;
+    max_mutations = 15000;
+    neighbours_without_mutting = 0;
+    max_neighbour_without_muting = 20 * num_attrs;
+
+    normal = Normal(0.0, 0.3);
+    uniform = Uniform(0.0, 1.0);
+
+    // Initialize random weights (using normal distribution)
+    weights[];
+    for ind in 0 to num_attrs {
+        weights.push(uniform.sample(rng));
+    }
+
+    initial_guessing[];
+    // Initialize current guessing
+    for elem in data {
+        initial_guessing.push(
+            classifier_1nn_with_weights(data, elem, weights));
+    }
+    current_ev_rate = evaluation_function(
+        class_rate(data, initial_guessing),
+        red_rate(weights),
+        0.5,
+    );
+\end{verbatim}
+
+A continuación, en el bucle principal seleccionamos un índice aleatorio, lo mutamos, y comprobamos si el vector de pesos con la mutación mejora al actual, en cuyo caso actualizamos este y continuamos ejecutando
+
+\begin{verbatim}
+
+    while neighbours_without_mutting < max_neighbour_without_muting
+        && num_of_mutations < max_mutations
+    {
+        aux_weights = weights;
+
+        fill_and_refresh_indexes();
+        index = indexes.pop();
+
+        // Mutation
+        aux_weights[index] += normal.sample(rng);
+
+        // Truncate into [0,1]
+        aux_weights[index] = truncate(0, 1, aux_weights[index]);
+
+        aux_guessing[];
+        // Initialize candidate guessing
+        for elem in data {
+            aux_guessing.push(
+                classifier_1nn_with_weights(data, elem, aux_weights));
+        }
+        let aux_ev_rate = evaluation_function(
+            class_rate(data, aux_guessing),
+            red_rate(aux_weights),
+            0.5,
+        );
+
+        if aux_ev_rate > current_ev_rate {
+            current_ev_rate = aux_ev_rate;
+            weights = aux_weights;
+            neighbours_without_mutting = 0;
+            fill_and_refresh_indexes();
+        } else
+            neighbours_without_mutting += 1;
+
+        num_of_mutations += 1;
+    }
+
+    return weights;
+}
+
+\end{verbatim}
+
+\newpage
+\section{Procedimiento considerado para desarrollar la práctica.}
+La implementación de la práctica se ha llevado a cabo en el lenguaje de programación Rust, y no se ha utilizado ningún framework de metaheurísticas.\\
+
+El código se encuentra en \texttt{src/main.rs}. Para compilarlo, en primer lugar es necesario instalar rustup, lo cual se encargará de instalar el propio lenguaje y la herramienta Cargo. Para instalar rustup solo es necesario ejecutar este comando:
+\begin{shell}
+curl https://sh.rustup.rs -sSf | sh
+\end{shell}
+
+Tras esto, para compilar el programa y ejecutarlo tenemos que hacer:
+\begin{shell}
+cargo build --release
+cargo run --release <args>
+\end{shell}
+
+El único argumento que acepta el programa es un entero, que será el que actuará como semilla para cualquier valor aleatorio sea necesario en el programa. Si se ejecuta sin argumentos, se toma como semilla por defecto el valor $1$.
+
+El programa ejecuta todos los algoritmos, y muestra por la salida estándar en formato tabla los resultados de cada algoritmo para los 3 conjuntos de datos proporcionados en la carpeta \texttt{data}.
+
+\newpage
+
+\section{Experimentos y análisis de los resultados}
+\subsection{Descripción de los casos del problema}
+\subsubsection{Colposcopy}
+Colposcopy es una base de datos sobre un procedimiento ginecológico que consiste en la exploración del cuello uterino. El fichero proporcionado contiene $287$ elementos que representan una imagen de la secuencia colposcópica.\\
+
+Cada ejemplo consta de 62 atributos reales(representan características extraidas de las imágenes) y una clase que puede ser de dos tipos, positivo o negativo.
+
+\subsubsection{Ionosphere}
+Ionosphere es una base de datos de radar recogidos por un sistema en Goose Bay, Labrador. Este sistema consiste en un conjunto de fases de 16 antenas de alta frecuencia con una potencia total transmitida del orden de 6,4 kilovatios. El fichero proporcionado contiene $352$ elementos.
+
+Cada ejemplo consta de 34 atributos reales y de una clase que puede ser bueno (si el retorno de radar muestra evidencia de algún tipo de estructura en la ionosfera) o malo (las señales simplemente atraviesan la ionosfera).
+
+\subsubsection{Texture}
+Texture es una base de datos que contiene datos sobre fotografias de distintos tipos de texturas con el objetivo de distinguir entre 11 texturas diferentes (césped, piel de becerro prensada, papel hecho a
+mano, rafia en bucle a una pila alta, lienzo de algodón,...). El fichero proporcionado contiene $550$ ejemplos.
+
+Cada ejemplo consta de 40 atributos construidos mediante la estimación de momentos modificados de cuarto orden en cuatro orientaciones: 0, 45, 90 y 135 grados, y de una clase que indica el tipo de textura.
+
+\subsection{Resultados obtenidos}
+En esta sección mostraremos los resultados obtenidos al ejecutar cada uno de los algoritmos sobre cada conjunto de datos proporcionado. Mostraremos los resultados en tablas, una por cada algoritmo y conjunto de datos. Cada tabla posee 5 columnas:
+\begin{itemize}
+    \item \textbf{Partición}. Indica que partición de las 5 se está utilizando como conjunto de prueba.
+    \item \textbf{Tasa\_class}. Tasa de clasificación obtenida.
+    \item \textbf{Tasa\_red}. Tasa de reducción obtenida.
+    \item \textbf{Agregado}. Función de evaluación utilizando los valores anteriores.
+    \item \textbf{Tiempo}. Tiempo de ejecución del algoritmo en milisegundos.
+\end{itemize}
+
+La ejecución que mostraremos se ha realizado utilizando como semilla el valor por defecto $1$. La ejecución ha sido realizado en mi portatil personal con sistema operativo Manjaro Linux 18.0.3, y procesador Intel(R) Core(TM) i7-8750H CPU @ 2.20GHz\\
+
+En las primeras tres tablas() se muestran los resultados obtenidos utilizando simplemente el algoritmo \textbf{1nn} para clasificar. En las siguientes tres tablas() se muestran los resultados asociados al algoritmo greedy \textbf{RELIEF}. Por último, las tres tablas restantes muestras los resultados obtenidos utilizando la \textbf{búsqueda local} como algoritmo para resolver el problema de APC.
+
+\newpage
+
+Podemos instalar y ejecutar el test con los comandos
+\begin{shell}
+jmml@UbuntuServer $> phoronix-test-suite install pts/sudokut
+jmml@UbuntuServer $> phoronix-test-suite run pts/sudokut
+\end{shell}
+
+\begin{figure}[ht]
+  \label{fig:disk-fsmark}
+  \includegraphics[width=\textwidth]{img/disk-fsmark.pdf}
+  \caption{Lectura del disco durante el test FS\_Mark}
+\end{figure}
+
+\begin{error}
+  Hay que tener en cuenta que la directiva \texttt{MaxRequestWorkers} fija el límite de peticiones que se pueden atender concurrentemente.
+\end{error}
+
+\begin{algorithm}[ht]
+  \KwData{this text}
+  \KwResult{how to write algorithm with \LaTeX2e }
+  initialization\;
+  \While{not at end of this document}{
+   read current\;
+   \eIf{understand}{
+    go to next section\;
+    current section becomes this one\;
+    }{
+    go back to the beginning of current section\;
+   }
+  }
+  \caption{How to write algorithms}
+ \end{algorithm}
+
+ \begin{table}[ht]
+  \centering
+  \begin{tabular}[t]{lcc}
+  \toprule
+  &Treatment A&Treatment B\\
+  \midrule
+  John Smith&1&2\\
+  Jane Doe&--&3\\
+  Mary Johnson&4&5\\
+  \bottomrule
+  \end{tabular}
+  \caption{Thicker horizontal lines above and below the table. Hola}
+  \end{table}%
+
+%printbibliography
+
+\end{document}
