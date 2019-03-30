@@ -2,6 +2,8 @@ extern crate csv;
 #[macro_use]
 extern crate prettytable;
 
+use std::env;
+
 use rand::distributions::{Distribution, Normal, Uniform};
 use rand::prelude::*;
 use rand::seq::SliceRandom;
@@ -411,18 +413,18 @@ pub fn relief_algorithm<T: DataElem<T> + Copy + Clone>(data: &Vec<T>) -> Vec<f32
 
 // Local search
 // Return the weights vec and the evaluation rate
-pub fn local_search<T: DataElem<T> + Copy + Clone>(data: &Vec<T>) -> Vec<f32> {
+pub fn local_search<T: DataElem<T> + Copy + Clone>(data: &Vec<T>, rng: &mut StdRng) -> Vec<f32> {
     let num_attrs = T::get_num_attributes();
-
-    let seed = [
-        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
-        26, 27, 28, 29, 30, 31, 32,
-    ];
-    let mut rng: StdRng = SeedableRng::from_seed(seed);
 
     // Initialize vector of indexes and shuffles it
     let mut indexes: Vec<usize> = (0..num_attrs).collect();
-    indexes.shuffle(&mut rng);
+    indexes.shuffle(rng);
+
+    // Closure that fills and shuffle indexes
+    let mut fill_and_shuffle = || {
+        indexes = (0..num_attrs).collect();
+        indexes.shuffle(rng);
+    };
 
     // Local search parameters
     let mut num_of_mutations = 0;
@@ -436,8 +438,8 @@ pub fn local_search<T: DataElem<T> + Copy + Clone>(data: &Vec<T>) -> Vec<f32> {
 
     // Initialize random weights (using normal distribution)
     let mut weights: Vec<f32> = Vec::with_capacity(T::get_num_attributes());
-    for _ in 0..T::get_num_attributes() {
-        weights.push(uniform.sample(&mut rng) as f32);
+    for _ in 0..num_attrs {
+        weights.push(uniform.sample(rng));
     }
 
     let mut initial_guessing: Vec<i32> = Vec::new();
@@ -458,19 +460,18 @@ pub fn local_search<T: DataElem<T> + Copy + Clone>(data: &Vec<T>) -> Vec<f32> {
     while neighbours_without_mutting < max_neighbour_without_muting
         && num_of_mutations < max_mutations
     {
-        println!("Pesos: {:?}", indexes);
         let mut aux_weights = weights.clone();
 
         // Refreshes index vector
         if indexes.is_empty() {
             indexes = (0..num_attrs).collect();
-            indexes.shuffle(&mut rng);
+            indexes.shuffle(rng);
         }
 
         let index = indexes.pop().expect("El vector está vacio");
 
         // Mutation
-        aux_weights[index] += normal.sample(&mut rng) as f32;
+        aux_weights[index] += normal.sample(rng) as f32;
 
         // Truncate into [0,1]
         if aux_weights[index] < 0. {
@@ -502,7 +503,7 @@ pub fn local_search<T: DataElem<T> + Copy + Clone>(data: &Vec<T>) -> Vec<f32> {
 
             // Refreshes indexes
             indexes = (0..num_attrs).collect();
-            indexes.shuffle(&mut rng);
+            indexes.shuffle(rng);
         } else {
             neighbours_without_mutting += 1;
         }
@@ -640,8 +641,9 @@ pub fn alg_relief<T: DataElem<T> + Copy + Clone>(
 pub fn alg_local_search<T: DataElem<T> + Copy + Clone>(
     training_set: &Vec<T>,
     test_set: &Vec<T>,
+    rng: &mut StdRng,
 ) -> (f32, f32, f32) {
-    let weights = local_search(training_set);
+    let weights = local_search(training_set, rng);
 
     let mut guessing: Vec<i32> = Vec::new();
 
@@ -672,7 +674,10 @@ pub fn alg_local_search<T: DataElem<T> + Copy + Clone>(
 ///
 /// # Returns
 /// A Result that contains the error in case it fails.
-pub fn run<T: DataElem<T> + Copy + Clone>(file_name: &str) -> Result<(), Box<Error>> {
+pub fn run<T: DataElem<T> + Copy + Clone>(
+    file_name: &str,
+    rng: &mut StdRng,
+) -> Result<(), Box<Error>> {
     let mut data: Vec<T> = Vec::new();
     let mut rdr = csv::Reader::from_path(file_name)?;
 
@@ -757,7 +762,7 @@ pub fn run<T: DataElem<T> + Copy + Clone>(file_name: &str) -> Result<(), Box<Err
         // Local search algorithm
         now = Instant::now();
 
-        let results_local_search = alg_local_search(&training_set, &test_set);
+        let results_local_search = alg_local_search(&training_set, &test_set, rng);
 
         let time_elapsed_local_search = now.elapsed().as_millis();
 
@@ -781,20 +786,32 @@ pub fn run<T: DataElem<T> + Copy + Clone>(file_name: &str) -> Result<(), Box<Err
 }
 
 fn main() {
+    let args: Vec<_> = env::args().collect();
+
+    let mut seed: u64 = 1;
+    if args.len() == 2 {
+        seed = args[1].parse::<u64>().unwrap();
+    } else if args.len() > 2 {
+        println!("* Ningún argumento -> semilla por defecto (1)\n* Un argumento -> ese argumento como semilla");
+        process::exit(1);
+    }
+
+    let mut rng: StdRng = SeedableRng::seed_from_u64(seed);
+
     println!("Texture--------------");
-    if let Err(err) = run::<TextureRecord>("data/texture.csv") {
+    if let Err(err) = run::<TextureRecord>("data/texture.csv", &mut rng) {
         println!("error en texture: {}", err);
         process::exit(1);
     }
 
     println!("Colposcopy-----------");
-    if let Err(err) = run::<ColposcopyRecord>("data/colposcopy.csv") {
+    if let Err(err) = run::<ColposcopyRecord>("data/colposcopy.csv", &mut rng) {
         println!("error en colposcopy: {}", err);
         process::exit(1);
     }
 
     println!("Ionosphere-----------");
-    if let Err(err) = run::<IonosphereRecord>("data/ionosphere.csv") {
+    if let Err(err) = run::<IonosphereRecord>("data/ionosphere.csv", &mut rng) {
         println!("error ionosphere: {}", err);
         process::exit(1);
     }
