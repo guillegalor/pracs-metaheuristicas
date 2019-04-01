@@ -197,17 +197,24 @@
     25619527b}
 \publishers{\vspace{2cm}\includegraphics[height=2.5cm]{UGR}\vspace{1cm}}
 \maketitle
-
+\newpage
 \tableofcontents
 \newpage
 
-\section{Introducción}
+\section{Descripción del Problema}
 
 El objetivo de esta práctica es, a partir de un conjunto de muestras de elementos ya clasificados, construir un algoritmo que utilizando la información de la que dispone sea capaz de clasificar nuevos elementos. \\
 
-En nuestro caso disponemos de tres conjuntos distintos de datos: \textit{texture}, \textit{colposcopy} e \textit{ionosphere}. Cada elemento de este conjunto esta representado por un número fijo de atributos de tipo real, asi como su clasificación está representada por un número entero. Cada conjunto de datos está almacenado en su respectivo archivo csv (utilizamos csv en lugar del formato original arff por comodidad).
+Formalmente, dado un $n \in \mathbb{N}$, y un conjunto de clases $C$, un clasificador es una funció $f$ definida de  $\mathbb{R}^n$ en $C$ que asigna a cada vector $x \in \mathbb{R}^n$ una clase $f(x)$.\\
 
-\newpage
+Nuestro problema consiste entonces en dada un conjunto finito de elementos ya clasificados $A = \{(x,c(x) \in \mathbb{R}^n \times C)$, encontrar un clasificador que permita clasificar otros elementos utilizando la información disponible en $A$. \\
+
+En nuestro caso, partimos del clasificador 1-NN, que consiste en elegir la clase del elemento más cercano del conjunto ya conocido, utilizando usualmente la distancia euclídea. En particular, nosotros utilizaremos una distancia euclídea ponderada, que consiste en, dados dos vectores $u, v \in \mathbb{R}^n$ y un vector de pesos $w \in [0,1]^n$:
+\[
+d_w(u,v) = \sqrt{\sum_{i = 1}^{n}w*(u_i - v_i)^2}
+.\]
+
+Dicho esto, nuestro trabajo será estudiar diversos algoritmos que generen un vector de pesos y analizar como se comportan los respectivos clasificadores \newpage
 
 \section{Consideraciones previas}
 \subsection{Esquemas de representación}
