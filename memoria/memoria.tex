@@ -194,7 +194,8 @@
 \author{Guillermo Galindo Ortuño\\
     4 del Doble Grado en Informática y Matemáticas\\
     Guillegalor@gmail.com\\
-    25619527b}
+    25619527b\\
+    Problema 1.b APC}
 \publishers{\vspace{2cm}\includegraphics[height=2.5cm]{UGR}\vspace{1cm}}
 \maketitle
 \newpage
@@ -337,7 +338,7 @@ best_ally_distance = MAX_VALUE;
 
 for candidate in data {
     if elem.id != candidate.id {
-        let aux_distance = euclidean_distance
+        aux_distance = euclidean_distance
             (current_elem, candidate);
 
         // Ally search
@@ -357,8 +358,8 @@ for candidate in data {
     }
 }
 
-let nearest_ally = data[nearest_ally_index];
-let nearest_enemy = data[nearest_enemy_index];
+nearest_ally = data[nearest_ally_index];
+nearest_enemy = data[nearest_enemy_index];
 \end{verbatim}
 
 A continuación, a cada peso le suma la distancia entre el atributo correspondiente del elemento actual(\texttt{current\_elem}) y de su aliado más cercano. Análogamente le resta la distancia respectiva a su enemigo más cercano.
@@ -456,7 +457,7 @@ A continuación, en el bucle principal seleccionamos un índice aleatorio, lo mu
             aux_guessing.push(
                 classifier_1nn_with_weights(data, elem, aux_weights));
         }
-        let aux_ev_rate = evaluation_function(
+        aux_ev_rate = evaluation_function(
             class_rate(data, aux_guessing),
             red_rate(aux_weights),
             0.5,
@@ -529,22 +530,127 @@ En esta sección mostraremos los resultados obtenidos al ejecutar cada uno de lo
 
 La ejecución que mostraremos se ha realizado utilizando como semilla el valor por defecto $1$. La ejecución ha sido realizado en mi portatil personal con sistema operativo Manjaro Linux 18.0.3, y procesador Intel(R) Core(TM) i7-8750H CPU @ 2.20GHz\\
 
-En las primeras tres tablas(1-3) se muestran los resultados obtenidos utilizando simplemente el algoritmo \textbf{1nn} para clasificar. En las siguientes tres tablas(4-6) se muestran los resultados asociados al algoritmo greedy \textbf{RELIEF}. Por último, las tres tablas restantes(7-9) muestran los resultados obtenidos utilizando la \textbf{búsqueda local} como algoritmo para resolver el problema de APC.
+En plas primeras seis tablas (1-6) se muestran los resultados de dos algoritmos aleatorios distintos: el primero elige una clase aleatoria de entre las conocidas para clasificar y el segundo crea un vector de pesos aleatorio y clasifica de manera normal utilizandolo
+
+En las siguientes tres tablas (7-9) se muestran los resultados obtenidos utilizando simplemente el algoritmo \textbf{1nn} para clasificar. A continuación, se muestran los resultados asociados al algoritmo greedy \textbf{RELIEF} (tablas 10-12). Por último, las tres tablas restantes (13-15) muestran los resultados obtenidos utilizando la \textbf{búsqueda local} como algoritmo para resolver el problema de APC.
+
+\newpage
+\subsubsection{Tablas Selección Aleatoria}
+
+ \begin{table}[ht]
+  \centering
+  \begin{tabular}[t]{rrrrr}
+  \toprule
+  Partición &Tasa\_class &Tasa\_red & Agregado & Tiempo(ms)\\
+  \midrule
+0         & 64.40678  & 100        & 82.20339  & 0      \\
+1         & 59.649124 & 100        & 79.824562 & 0      \\
+2         & 70.17544  & 100        & 85.08772  & 0      \\
+3         & 61.403507 & 100        & 80.701754 & 0      \\
+4         & 57.894737 & 100        & 78.947369 & 0      \\
+  \bottomrule
+  \end{tabular}
+  \caption{Ejecución de seleccción aleatoria sobre el conjunto Colposcopy }
+  \end{table}%
+
+ \begin{table}[ht]
+  \centering
+  \begin{tabular}[t]{rrrrr}
+  \toprule
+  Partición &Tasa\_class &Tasa\_red & Agregado & Tiempo(ms)\\
+  \midrule
+0         & 50.704224 & 100        & 75.352112 & 0      \\
+1         & 45.714287 & 100        & 72.857143 & 0      \\
+2         & 45.714287 & 100        & 72.857143 & 0      \\
+3         & 60        & 100        & 80.0      & 0      \\
+4         & 61.42857  & 100        & 80.714285 & 0      \\
+  \bottomrule
+  \end{tabular}
+  \caption{Ejecución de seleccción aleatoria sobre el conjunto Ionosphere}
+  \end{table}%
+
+ \begin{table}[ht]
+  \centering
+  \begin{tabular}[t]{rrrrr}
+  \toprule
+  Partición &Tasa\_class &Tasa\_red & Agregado & Tiempo(ms)\\
+  \midrule
+0         & 9.090909  & 100        & 54.5454545 & 0      \\
+1         & 7.2727275 & 100        & 53.636364  & 0      \\
+2         & 6.3636365 & 100        & 53.1818182 & 0      \\
+3         & 11.818182 & 100        & 55.909091  & 0      \\
+4         & 9.090909  & 100        & 54.5454545 & 0      \\
+  \bottomrule
+  \end{tabular}
+  \caption{Ejecución de seleccción aleatoria sobre el conjunto Texture}
+  \end{table}%
+
+\newpage
+
+\subsubsection{Tablas Pesos Aleatorios}
+
+ \begin{table}[ht]
+  \centering
+  \begin{tabular}[t]{rrrrr}
+  \toprule
+  Partición &Tasa\_class &Tasa\_red & Agregado & Tiempo(ms)\\
+  \midrule
+0         & 76.27119  & 22.580645  & 49.425915 & 0      \\
+1         & 70.17544  & 20.967741  & 45.57159  & 0      \\
+2         & 70.17544  & 14.5161295 & 42.345783 & 0      \\
+3         & 71.929825 & 29.032259  & 50.48104  & 0      \\
+4         & 77.192986 & 17.741936  & 47.46746  & 0      \\
+  \bottomrule
+  \end{tabular}
+  \caption{Ejecución de pesos aleatorios sobre el conjunto Colposcopy }
+  \end{table}%
+
+ \begin{table}[ht]
+  \centering
+  \begin{tabular}[t]{rrrrr}
+  \toprule
+  Partición &Tasa\_class &Tasa\_red & Agregado & Tiempo(ms)\\
+  \midrule
+0         & 90.14085  & 17.647058 & 53.89395  & 0      \\
+1         & 81.42857  & 26.470589 & 53.94958  & 0      \\
+2         & 82.85714  & 17.647058 & 50.252098 & 0      \\
+3         & 94.28571  & 26.470589 & 60.37815  & 0      \\
+4         & 87.14286  & 17.647058 & 52.39496  & 0      \\
+  \bottomrule
+  \end{tabular}
+  \caption{Ejecución de pesos aleatorios sobre el conjunto Ionosphere}
+  \end{table}%
+
+ \begin{table}[ht]
+  \centering
+  \begin{tabular}[t]{rrrrr}
+  \toprule
+  Partición &Tasa\_class &Tasa\_red & Agregado & Tiempo(ms)\\
+  \midrule
+0         & 95.454544 & 10       & 52.727272 & 1      \\
+1         & 90        & 25       & 57.5      & 1      \\
+2         & 96.36364  & 27.5     & 61.93182  & 1      \\
+3         & 90        & 20       & 55        & 1      \\
+4         & 93.63636  & 20       & 56.81818  & 1      \\
+  \bottomrule
+  \end{tabular}
+  \caption{Ejecución de pesos aleatorios sobre el conjunto Texture}
+  \end{table}%
 
 \newpage
 \subsubsection{Tablas 1nn}
 
  \begin{table}[ht]
   \centering
-  \begin{tabular}[t]{rrrrrr}
+  \begin{tabular}[t]{rrrrr}
   \toprule
-  &Partición &Tasa\_class &Tasa\_red & Agregado & Tiempo(ms)\\
+  Partición &Tasa\_class &Tasa\_red & Agregado & Tiempo(ms)\\
   \midrule
-& 0         & 74.57627  & 0        & 37.288136 & 0      \\
-& 1         & 70.17544  & 0        & 35.08772  & 0      \\
-& 2         & 73.68421  & 0        & 36.842106 & 0      \\
-& 3         & 75.4386   & 0        & 37.7193   & 0      \\
-& 4         & 82.45614  & 0        & 41.22807  & 0      \\
+0         & 74.57627  & 0        & 37.288136 & 0      \\
+1         & 70.17544  & 0        & 35.08772  & 0      \\
+2         & 73.68421  & 0        & 36.842106 & 0      \\
+3         & 75.4386   & 0        & 37.7193   & 0      \\
+4         & 82.45614  & 0        & 41.22807  & 0      \\
   \bottomrule
   \end{tabular}
   \caption{Ejecución del \textbf{1nn} sobre el conjunto Colposcopy }
@@ -552,15 +658,15 @@ En las primeras tres tablas(1-3) se muestran los resultados obtenidos utilizando
 
  \begin{table}[ht]
   \centering
-  \begin{tabular}[t]{lccccc}
+  \begin{tabular}[t]{rrrrr}
   \toprule
-  &Partición &Tasa\_class &Tasa\_red & Agregado & Tiempo(ms)\\
+  Partición &Tasa\_class &Tasa\_red & Agregado & Tiempo(ms)\\
   \midrule
-& 0         & 90.14085  & 0        & 45.070423 & 0      \\
-& 1         & 80        & 0        & 40        & 0      \\
-& 2         & 82.85714  & 0        & 41.42857  & 0      \\
-& 3         & 92.85714  & 0        & 46.42857  & 0      \\
-& 4         & 87.14286  & 0        & 43.57143  & 0      \\
+0         & 90.14085  & 0        & 45.070423 & 0      \\
+1         & 80        & 0        & 40        & 0      \\
+2         & 82.85714  & 0        & 41.42857  & 0      \\
+3         & 92.85714  & 0        & 46.42857  & 0      \\
+4         & 87.14286  & 0        & 43.57143  & 0      \\
   \bottomrule
   \end{tabular}
   \caption{Ejecución del \textbf{1nn} sobre el conjunto Ionosphere}
@@ -568,15 +674,15 @@ En las primeras tres tablas(1-3) se muestran los resultados obtenidos utilizando
 
  \begin{table}[ht]
   \centering
-  \begin{tabular}[t]{lccccc}
+  \begin{tabular}[t]{rrrrr}
   \toprule
-  &Partición &Tasa\_class &Tasa\_red & Agregado & Tiempo(ms)\\
+  Partición &Tasa\_class &Tasa\_red & Agregado & Tiempo(ms)\\
   \midrule
-& 0         & 93.63636  & 0        & 46.81818  & 1      \\
-& 1         & 89.09091  & 0        & 44.545456 & 1      \\
-& 2         & 94.545456 & 0        & 47.272728 & 1      \\
-& 3         & 92.72727  & 0        & 46.363636 & 1      \\
-& 4         & 92.72727  & 0        & 46.363636 & 1      \\
+0         & 93.63636  & 0        & 46.81818  & 1      \\
+1         & 89.09091  & 0        & 44.545456 & 1      \\
+2         & 94.545456 & 0        & 47.272728 & 1      \\
+3         & 92.72727  & 0        & 46.363636 & 1      \\
+4         & 92.72727  & 0        & 46.363636 & 1      \\
   \bottomrule
   \end{tabular}
   \caption{Ejecución del \textbf{1nn} sobre el conjunto Texture}
@@ -587,15 +693,15 @@ En las primeras tres tablas(1-3) se muestran los resultados obtenidos utilizando
 
  \begin{table}[ht]
   \centering
-  \begin{tabular}[t]{rrrrrr}
+  \begin{tabular}[t]{rrrrr}
   \toprule
-  &Partición &Tasa\_class &Tasa\_red & Agregado & Tiempo(ms)\\
+  Partición &Tasa\_class &Tasa\_red & Agregado & Tiempo(ms)\\
   \midrule
-& 0         & 72.881355 & 40.322582 & 56.601967 & 3      \\
-& 1         & 75.4386   & 27.419355 & 51.428978 & 3      \\
-& 2         & 77.192986 & 32.258064 & 54.725525 & 3      \\
-& 3         & 71.929825 & 51.612904 & 61.771362 & 3      \\
-& 4         & 82.45614  & 30.64516  & 56.55065  & 3      \\
+0         & 72.881355 & 40.322582 & 56.601967 & 3      \\
+1         & 75.4386   & 27.419355 & 51.428978 & 3      \\
+2         & 77.192986 & 32.258064 & 54.725525 & 3      \\
+3         & 71.929825 & 51.612904 & 61.771362 & 3      \\
+4         & 82.45614  & 30.64516  & 56.55065  & 3      \\
   \bottomrule
   \end{tabular}
   \caption{Ejecución del algoritmo \textbf{RELIEF} sobre el conjunto Colposcopy }
@@ -603,15 +709,15 @@ En las primeras tres tablas(1-3) se muestran los resultados obtenidos utilizando
 
  \begin{table}[ht]
   \centering
-  \begin{tabular}[t]{lccccc}
+  \begin{tabular}[t]{rrrrr}
   \toprule
-  &Partición &Tasa\_class &Tasa\_red & Agregado & Tiempo(ms)\\
+  Partición &Tasa\_class &Tasa\_red & Agregado & Tiempo(ms)\\
   \midrule
-& 0         & 90.14085  & 2.9411764 & 46.54101  & 2      \\
-& 1         & 81.42857  & 2.9411764 & 42.184875 & 2      \\
-& 2         & 82.85714  & 2.9411764 & 42.89916  & 2      \\
-& 3         & 92.85714  & 2.9411764 & 47.89916  & 2      \\
-& 4         & 90        & 2.9411764 & 46.47059  & 2      \\
+0         & 90.14085  & 2.9411764 & 46.54101  & 2      \\
+1         & 81.42857  & 2.9411764 & 42.184875 & 2      \\
+2         & 82.85714  & 2.9411764 & 42.89916  & 2      \\
+3         & 92.85714  & 2.9411764 & 47.89916  & 2      \\
+4         & 90        & 2.9411764 & 46.47059  & 2      \\
   \bottomrule
   \end{tabular}
   \caption{Ejecución del algoritmo \textbf{RELIEF} sobre el conjunto Ionosphere}
@@ -619,15 +725,15 @@ En las primeras tres tablas(1-3) se muestran los resultados obtenidos utilizando
 
  \begin{table}[ht]
   \centering
-  \begin{tabular}[t]{lccccc}
+  \begin{tabular}[t]{rrrrr}
   \toprule
-  &Partición &Tasa\_class &Tasa\_red & Agregado & Tiempo(ms)\\
+  Partición &Tasa\_class &Tasa\_red & Agregado & Tiempo(ms)\\
   \midrule
-& 0         & 91.818184 & 15       & 53.409092 & 7      \\
-& 1         & 90.90909  & 2.5      & 46.704544 & 7      \\
-& 2         & 95.454544 & 2.5      & 48.977272 & 7      \\
-& 3         & 92.72727  & 2.5      & 47.613636 & 7      \\
-& 4         & 93.63636  & 5        & 49.31818  & 7      \\
+0         & 91.818184 & 15       & 53.409092 & 7      \\
+1         & 90.90909  & 2.5      & 46.704544 & 7      \\
+2         & 95.454544 & 2.5      & 48.977272 & 7      \\
+3         & 92.72727  & 2.5      & 47.613636 & 7      \\
+4         & 93.63636  & 5        & 49.31818  & 7      \\
   \bottomrule
   \end{tabular}
   \caption{Ejecución del algoritmo \textbf{RELIEF} sobre el conjunto Texture}
@@ -640,15 +746,15 @@ En las primeras tres tablas(1-3) se muestran los resultados obtenidos utilizando
 
  \begin{table}[ht]
   \centering
-  \begin{tabular}[t]{rrrrrr}
+  \begin{tabular}[t]{rrrrr}
   \toprule
-  &Partición &Tasa\_class &Tasa\_red & Agregado & Tiempo(ms)\\
+  Partición &Tasa\_class &Tasa\_red & Agregado & Tiempo(ms)\\
   \midrule
-& 0         & 79.66102  & 79.03226  & 79.346634 & 8073   \\
-& 1         & 71.929825 & 82.258064 & 77.09395  & 9312   \\
-& 2         & 75.4386   & 74.19355  & 74.81607  & 6747   \\
-& 3         & 73.68421  & 80.645164 & 77.16469  & 8936   \\
-& 4         & 77.192986 & 85.48387  & 81.338425 & 15240  \\
+0         & 72.881355 & 85.48387  & 79.18262  & 11806  \\
+1         & 71.929825 & 80.645164 & 76.28749  & 6312   \\
+2         & 68.42105  & 79.03226  & 73.726654 & 8371   \\
+3         & 68.42105  & 80.645164 & 74.53311  & 15446  \\
+4         & 73.68421  & 77.41936  & 75.55179  & 13647  \\
   \bottomrule
   \end{tabular}
   \caption{Ejecución del algoritmo \textbf{busqueda local} sobre el conjunto Colposcopy }
@@ -656,15 +762,15 @@ En las primeras tres tablas(1-3) se muestran los resultados obtenidos utilizando
 
  \begin{table}[ht]
   \centering
-  \begin{tabular}[t]{lccccc}
+  \begin{tabular}[t]{rrrrr}
   \toprule
-  &Partición &Tasa\_class &Tasa\_red & Agregado & Tiempo(ms)\\
+  Partición &Tasa\_class &Tasa\_red & Agregado & Tiempo(ms)\\
   \midrule
-& 0         & 84.50704  & 88.23529 & 86.37117 & 3934   \\
-& 1         & 91.42857  & 82.35294 & 86.89076 & 3007   \\
-& 2         & 78.57143  & 88.23529 & 83.40336 & 3791   \\
-& 3         & 85.71429  & 85.29412 & 85.5042  & 5380   \\
-& 4         & 92.85714  & 88.23529 & 90.54622 & 5640   \\
+0         & 91.54929  & 88.23529 & 89.89229  & 3995   \\
+1         & 85.71429  & 85.29412 & 85.5042   & 2753   \\
+2         & 84.28571  & 91.17647 & 87.731094 & 4425   \\
+3         & 91.42857  & 85.29412 & 88.36134  & 2889   \\
+4         & 84.28571  & 82.35294 & 83.31933  & 2318   \\
   \bottomrule
   \end{tabular}
   \caption{Ejecución del algoritmo \textbf{busqueda local} sobre el conjunto Ionosphere}
@@ -672,15 +778,15 @@ En las primeras tres tablas(1-3) se muestran los resultados obtenidos utilizando
 
  \begin{table}[ht]
   \centering
-  \begin{tabular}[t]{lccccc}
+  \begin{tabular}[t]{rrrrr}
   \toprule
-  &Partición &Tasa\_class &Tasa\_red & Agregado & Tiempo(ms)\\
+  Partición &Tasa\_class &Tasa\_red & Agregado & Tiempo(ms)\\
   \midrule
-& 0         & 87.27273  & 85       & 86.13637  & 12681  \\
-& 1         & 92.72727  & 85      & 88.86363  & 15116  \\
-& 2         & 89.09091  & 87.5     & 88.295456 & 19901  \\
-& 3         & 85.454544 & 87.5     & 86.47727  & 15235  \\
-& 4         & 89.09091  & 85       & 87.045456 & 11133  \\
+0         & 90.90909  & 82.5     & 86.704544 & 17734  \\
+1         & 89.09091  & 75       & 82.045456 & 14127  \\
+2         & 90.90909  & 85       & 87.954544 & 20305  \\
+3         & 88.181816 & 80       & 84.09091  & 8280   \\
+4         & 87.27273  & 90       & 88.63637  & 27707  \\
 \bottomrule
   \end{tabular}
   \caption{Ejecución del algoritmo \textbf{busqueda local} sobre el conjunto Texture}
@@ -688,52 +794,72 @@ En las primeras tres tablas(1-3) se muestran los resultados obtenidos utilizando
 
 \newpage
 
-Podemos instalar y ejecutar el test con los comandos
-\begin{shell}
-jmml@UbuntuServer $> phoronix-test-suite install pts/sudokut
-jmml@UbuntuServer $> phoronix-test-suite run pts/sudokut
-\end{shell}
-
-\begin{figure}[ht]
-  \label{fig:disk-fsmark}
-  \includegraphics[width=\textwidth]{img/disk-fsmark.pdf}
-  \caption{Lectura del disco durante el test FS\_Mark}
-\end{figure}
-
-\begin{error}
-  Hay que tener en cuenta que la directiva \texttt{MaxRequestWorkers} fija el límite de peticiones que se pueden atender concurrentemente.
-\end{error}
-
-\begin{algorithm}[ht]
-  \KwData{this text}
-  \KwResult{how to write algorithm with \LaTeX2e }
-  initialization\;
-  \While{not at end of this document}{
-   read current\;
-   \eIf{understand}{
-    go to next section\;
-    current section becomes this one\;
-    }{
-    go back to the beginning of current section\;
-   }
-  }
-  \caption{How to write algorithms}
- \end{algorithm}
+\subsubsection{Tablas Agrupadas}
 
  \begin{table}[ht]
   \centering
-  \begin{tabular}[t]{lcc}
+  \begin{tabular}[t]{lrrrr}
   \toprule
-  &Treatment A&Treatment B\\
+  Algoritmo &Tasa\_class &Tasa\_red & Agregado & Tiempo(ms)\\
   \midrule
-  John Smith&1&2\\
-  Jane Doe&--&3\\
-  Mary Johnson&4&5\\
+ Random             & 62.705918 & 100 & 81.352959 & 0\\
+ Random weights     & 73.148976 & 20.967742 & 47.058359 & 0\\
+ 1-NN               & 75.266132 & 0 & 37.633066 & 0\\
+ RELIEF             & 75.979781 & 36.451613 & 56.215697 & 3\\
+ Local search       & 71.067498 & 80.645164 & 75.856331 & 11073.8\\
   \bottomrule
   \end{tabular}
-  \caption{Thicker horizontal lines above and below the table. Hola}
+  \caption{Tabla conjunta sobre el conjunto Colposcopy }
   \end{table}%
 
-%printbibliography
+ \begin{table}[ht]
+  \centering
+  \begin{tabular}[t]{lrrrr}
+  \toprule
+  Algoritmo &Tasa\_class &Tasa\_red & Agregado & Tiempo(ms)\\
+  \midrule
+ Random & 52.712274 & 100 & 76.356137 & 0\\
+ Random weights & 87.171026 & 21.176470 & 54.173748 & 0\\
+1-NN & 86.599598 & 0 & 43.299799 & 0\\
+ RELIEF& 87.45674 & 2.9411764 & 45.198958 & 2\\
+ Local search& 87.452714 & 86.470588 & 86.961651 & 3235.6\\
+  \bottomrule
+  \end{tabular}
+  \caption{Tabla conjunta sobre el conjunto Ionosphere}
+  \end{table}%
+
+ \begin{table}[ht]
+  \centering
+  \begin{tabular}[t]{lrrrr}
+  \toprule
+  Algoritmo &Tasa\_class &Tasa\_red & Agregado & Tiempo(ms)\\
+  \midrule
+ Random             & 8.7272728 & 100 & 54.363637 & 0\\
+ Random weights     & 93.090909 & 20.5 & 56.795454 & 1\\
+ 1-NN               & 92.545453 & 0 & 46.272727 & 1\\
+ RELIEF             & 92.909090 & 5.5 & 49.204545 & 7.2\\
+ Local search       & 89.272727 & 82.5 & 85.886364 & 17632.4\\
+\bottomrule
+  \end{tabular}
+  \caption{Tabla conjunta sobre el conjunto Texture}
+  \end{table}%
+
+\newpage
+
+\subsection{Análisis de los resultados}
+
+Comencemos hablando del algoritmo que selecciona una clase de las conocidas de manera aleatoria. Al contrario de lo que cabría esperar, obtiene <<buenos>> resultados tanto sobre el conjunto de datos \textit{Colposcopy}, como sobre \textit{Ionosphere} . Esto es debido a que únicamente hay dos clases distintas, luego la tasa de clasificación está cercana al $50\%$ , y además la tasa de reducción es del $100\%$ ya que no utiliza ningún peso. En consecuencia el agregado se encuentra entre el $70\%$ y el $80\%$. Ahora bien, como en \textit{Texture} hay once clases distintas, la tasa de clasificación es bastante mala pero el agregado sigue estando por encima del $50\%$ gracias a la tasa de reducción.
+
+Si nos fijamos ahora en el algoritmo que utiliza un vector de pesos aleatorios, observamos que tanto en el conjunto \textit{Ionosphere} como en \textit{Texture} obtiene muy buenas tasas de clasificación (cercanas al $90\%$), y bastante buenas en \textit{Colposcopy} (cerca de un $73\%$). Sin embargo, la tasa de reducción no es muy grande en ninguno de los casos, estando siempre en torno al $20\%$. Esto provoca que el agregado esté cerca del $50\%$ en todos los casos.
+
+Dicho esto, fijándonos en la tabla del \textbf{1-NN}, en los tres casos obtenemos resultados muy parecidos a los obtenidos utilizando un vector de pesos aleatorio, sin embargo en este caso como tenemos en cuenta todos los pesos (la distancia euclidia toma todos los pesos a $1$), la tasa de reducción es $0$ siempre, lo que se ve reflejado en el agregado, que es aproximadamente un $10\%$ menor que cuando utilizamos un vector de pesos aleatorio.
+
+En todos los algoritmos anteriores, como prácticamente la única operación que hay que hacer es calcular la distancia entre todos los elementos una vez, y los conjuntos no son muy grandes, los tiempos de ejecución son practicamente despreciables.
+
+Si nos fijamos en los resultados obtenidos por uno de los dos algoritmos principales de esta práctica, el \textbf{RELIEF}, las tasas de clasificación son ligeramente mayores o practicamente iguales que en los dos casos anteriores. Sin tener en cuenta el conjunto colposcopy, obtenemos tasas de reducciones muy pequeñas aunque no nulas, provocando que el agregado sea mayor que el del \textbf{1-NN} aunque menor que el vector de pesos aleatorio. En este algoritmo ya observamos que hemos medido un tiempo, aunque bastante pequeño, significativo ya que es necesario recorrer dos veces el conjunto de elementos (una para calcular los enemigos y aliados y calcular los pesos, y otra para ejecutar \textbf{1-NN}).
+
+Por último, si estudiamos la \textbf{búsqueda local} es facil observar que es la que mejores resultados obtiene si tenemos en cuenta la función de evaluación. Esto es debido a que en la implementación de este algoritmo, se buscan maximos de la función de evaluación, por tanto, aunque las tasas de clasificación sean ligeramente menores que en los tres casos anteriores, se consigue una muy alta tasa de reducción, lo que consigue que el agregado esté cercano al $75\%$ en Colposcopy, y al  $89\%$ en los dos conjuntos restantes. Si hablamos del tiempo, en este algoritmo es considerablemente mayor, lo cual era de esperar, pues en cada iteración del bucle principal se evaluán los pesos tras la mutación, por lo que se recorre el conjunto de elementos un mínimo de veinte veces el número de atributos y un máximo de 15000 veces.
+
+Las conclusiones que obtenemos teniendo en cuenta todos los resultados es que, en la función de evaluación le estamos dando demasiada importancia a la reducción, ya que ambos algoritmos aleatorios obtienen prácticamente las puntuaciones más altas a excepción de la \textbf{búsqueda local}  . Esta se comporta como podría esperarse, y es que obtiene puntuaciones muy altas, reduciendo un gran número de pesos.
 
 \end{document}

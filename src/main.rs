@@ -416,15 +416,15 @@ pub fn relief_algorithm<T: DataElem<T> + Copy + Clone>(data: &Vec<T>) -> Vec<f32
 pub fn local_search<T: DataElem<T> + Copy + Clone>(data: &Vec<T>, rng: &mut StdRng) -> Vec<f32> {
     let num_attrs = T::get_num_attributes();
 
-    // Initialize vector of indexes and shuffles it
-    let mut indexes: Vec<usize> = (0..num_attrs).collect();
-    indexes.shuffle(rng);
-
-    // Closure that fills and shuffle indexes
-    let mut fill_and_shuffle = || {
-        indexes = (0..num_attrs).collect();
-        indexes.shuffle(rng);
+    // Closure that fills and shuffle indices
+    let fill_and_shuffle = |indices: &mut Vec<usize>, rng: &mut StdRng| {
+        *indices = (0..num_attrs).collect();
+        indices.shuffle(rng);
     };
+
+    // Initialize vector of indices and shuffles it
+    let mut indices: Vec<usize> = Vec::with_capacity(num_attrs);
+    fill_and_shuffle(&mut indices, rng);
 
     // Local search parameters
     let mut num_of_mutations = 0;
@@ -463,12 +463,9 @@ pub fn local_search<T: DataElem<T> + Copy + Clone>(data: &Vec<T>, rng: &mut StdR
         let mut aux_weights = weights.clone();
 
         // Refreshes index vector
-        if indexes.is_empty() {
-            indexes = (0..num_attrs).collect();
-            indexes.shuffle(rng);
-        }
+        fill_and_shuffle(&mut indices, rng);
 
-        let index = indexes.pop().expect("El vector está vacio");
+        let index = indices.pop().expect("El vector está vacio");
 
         // Mutation
         aux_weights[index] += normal.sample(rng) as f32;
@@ -501,9 +498,8 @@ pub fn local_search<T: DataElem<T> + Copy + Clone>(data: &Vec<T>, rng: &mut StdR
 
             neighbours_without_mutting = 0;
 
-            // Refreshes indexes
-            indexes = (0..num_attrs).collect();
-            indexes.shuffle(rng);
+            // Refreshes indices
+            fill_and_shuffle(&mut indices, rng);
         } else {
             neighbours_without_mutting += 1;
         }
@@ -514,6 +510,35 @@ pub fn local_search<T: DataElem<T> + Copy + Clone>(data: &Vec<T>, rng: &mut StdR
     return weights;
 }
 
+pub fn genetic_algorithm<T: DataElem<T> + Copy + Clone>(
+    data: &Vec<T>,
+    rng: &mut StdRng,
+    population_size: usize,
+) -> Vec<f32> {
+    let num_attrs = T::get_num_attributes();
+    let uniform = Uniform::new(0.0, 1.0);
+
+    // Initialization ----
+
+    // Initial population
+    let mut initial_population: Vec<Vec<f32>> = Vec::with_capacity(population_size);
+
+    let mut aux_weights: Vec<f32> = Vec::with_capacity(T::get_num_attributes());
+
+    // Initialize random weights (using normal distribution)
+    for _ in 0..population_size {
+        for _ in 0..num_attrs {
+            aux_weights.push(uniform.sample(rng));
+        }
+        initial_population.push(aux_weights.clone());
+        aux_weights.clear();
+    }
+
+    // TODO Count how many calls to evaluation_function
+    for _ in 0..5000 {}
+
+    return Vec::new();
+}
 //---------------------------------------------------------------------------------------
 // Evaluation function for results
 //---------------------------------------------------------------------------------------
@@ -586,9 +611,79 @@ pub fn evaluation_function(class_rate: f32, red_rate: f32, alpha: f32) -> f32 {
     return alpha * class_rate + (1.0 - alpha) * red_rate;
 }
 
+pub fn evaluate<T: DataElem<T> + Copy + Clone>(
+    data: &Vec<T>,
+    weights: &Vec<f32>,
+    alpha: f32,
+) -> f32 {
+    let mut guessing: Vec<i32> = Vec::new();
+
+    for elem in data.iter() {
+        guessing
+            .push(classifier_1nn_with_weights(data, elem, &weights).expect("Classifier 1nn en "));
+    }
+
+    // Results
+    return evaluation_function(
+        class_rate(data, &guessing).unwrap(),
+        red_rate(weights),
+        alpha,
+    );
+}
+
 //---------------------------------------------------------------------------------------
 // Full algorithms execution functions
 //---------------------------------------------------------------------------------------
+
+// Random --------------
+pub fn alg_random<T: DataElem<T> + Copy + Clone>(
+    training_set: &Vec<T>,
+    test_set: &Vec<T>,
+    rng: &mut StdRng,
+) -> (f32, f32, f32) {
+    let mut guessing: Vec<i32> = Vec::new();
+
+    for _ in test_set.iter() {
+        let random_elem = training_set[rng.gen_range(0, training_set.len())];
+        guessing.push(random_elem.get_class());
+    }
+
+    // Results
+    let c_rate: f32 = class_rate(test_set, &guessing)
+        .expect("No coincide el numero de elementos del test con el numero de <<guessings>>");
+    let r_rate: f32 = 100.;
+    let ev_rate: f32 = evaluation_function(c_rate, r_rate, 0.5);
+
+    return (c_rate, r_rate, ev_rate);
+}
+
+pub fn alg_random_weights<T: DataElem<T> + Copy + Clone>(
+    training_set: &Vec<T>,
+    test_set: &Vec<T>,
+    rng: &mut StdRng,
+) -> (f32, f32, f32) {
+    let mut guessing: Vec<i32> = Vec::new();
+    let mut weights: Vec<f32> = Vec::with_capacity(T::get_num_attributes());
+
+    for _ in 0..T::get_num_attributes() {
+        weights.push(rng.gen_range(0., 1.));
+    }
+
+    for elem in test_set.iter() {
+        guessing.push(
+            classifier_1nn_with_weights(training_set, elem, &weights)
+                .expect("Classifier 1nn en alg_random_weights"),
+        );
+    }
+
+    // Results
+    let c_rate: f32 = class_rate(test_set, &guessing)
+        .expect("No coincide el numero de elementos del test con el numero de <<guessings>>");
+    let r_rate: f32 = red_rate(&weights);
+    let ev_rate: f32 = evaluation_function(c_rate, r_rate, 0.5);
+
+    return (c_rate, r_rate, ev_rate);
+}
 
 // 1nn -----------------
 pub fn alg_1nn<T: DataElem<T> + Copy + Clone>(
@@ -711,6 +806,9 @@ pub fn run<T: DataElem<T> + Copy + Clone>(
     let partitions = make_partitions(&data);
 
     // Output tables declaration
+    let mut table_random = table!(["Partición", "Tasa_clas", "Tasa_red", "Agregado", "Tiempo"]);
+    let mut table_random_weights =
+        table!(["Partición", "Tasa_clas", "Tasa_red", "Agregado", "Tiempo"]);
     let mut table_1nn = table!(["Partición", "Tasa_clas", "Tasa_red", "Agregado", "Tiempo"]);
     let mut table_relief = table!(["Partición", "Tasa_clas", "Tasa_red", "Agregado", "Tiempo"]);
     let mut table_localsearch =
@@ -729,8 +827,38 @@ pub fn run<T: DataElem<T> + Copy + Clone>(
             }
         }
 
-        // 1-NN
+        // Random
         let mut now = Instant::now();
+
+        let results_random = alg_random(&training_set, &test_set, rng);
+
+        let time_elapsed_random = now.elapsed().as_millis();
+
+        table_random.add_row(row![
+            test,
+            results_random.0,
+            results_random.1,
+            results_random.2,
+            time_elapsed_random
+        ]);
+
+        // Random weights
+        now = Instant::now();
+
+        let results_random_weights = alg_random_weights(&training_set, &test_set, rng);
+
+        let time_elapsed_random_weights = now.elapsed().as_millis();
+
+        table_random_weights.add_row(row![
+            test,
+            results_random_weights.0,
+            results_random_weights.1,
+            results_random_weights.2,
+            time_elapsed_random_weights
+        ]);
+
+        // 1-NN
+        now = Instant::now();
 
         let results_1nn = alg_1nn(&training_set, &test_set);
 
@@ -775,6 +903,10 @@ pub fn run<T: DataElem<T> + Copy + Clone>(
         ]);
     }
 
+    println!(" Resultados utilizando random");
+    table_random.printstd();
+    println!(" Resultados utilizando random weights");
+    table_random_weights.printstd();
     println!(" Resultados utilizando 1nn");
     table_1nn.printstd();
     println!(" Resultados utilizando Relief");
