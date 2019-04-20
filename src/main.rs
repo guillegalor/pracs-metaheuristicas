@@ -17,6 +17,8 @@ use std::time::Instant;
 // DataElem definitions and specific functions for it
 // ---------------------------------------------------------------------------------
 
+type Chromosome = Vec<f32>;
+
 /// Trait for CSV data
 ///
 /// **Note**: The struct implementing this trait must also implement `Copy` and `Clone`.
@@ -514,30 +516,97 @@ pub fn genetic_algorithm<T: DataElem<T> + Copy + Clone>(
     data: &Vec<T>,
     rng: &mut StdRng,
     population_size: usize,
+    crossover_probability: f32,
+    mutation_probability: f32,
 ) -> Vec<f32> {
-    let num_attrs = T::get_num_attributes();
+    let quick_eval = |weights: &Vec<f32>| {
+        return evaluate(data, weights, 0.5);
+    };
+
+    let num_gens_per_chromosome = T::get_num_attributes();
     let uniform = Uniform::new(0.0, 1.0);
+    let normal = Normal::new(0.0, 0.3);
 
     // Initialization ----
-
-    // Initial population
     let mut initial_population: Vec<Vec<f32>> = Vec::with_capacity(population_size);
+    let mut initial_population_evaluation: Vec<f32> = Vec::with_capacity(population_size);
 
     let mut aux_weights: Vec<f32> = Vec::with_capacity(T::get_num_attributes());
 
     // Initialize random weights (using normal distribution)
     for _ in 0..population_size {
-        for _ in 0..num_attrs {
+        for _ in 0..num_gens_per_chromosome {
             aux_weights.push(uniform.sample(rng));
         }
         initial_population.push(aux_weights.clone());
+        initial_population_evaluation.push(quick_eval(&aux_weights));
+
         aux_weights.clear();
     }
 
     // TODO Count how many calls to evaluation_function
-    for _ in 0..5000 {}
+    for _ in 0..5000 {
+        let mut auxiliar_population: Vec<Vec<f32>> = Vec::with_capacity(population_size);
+        let mut parents: Vec<Vec<f32>> = Vec::with_capacity(population_size * 2);
+
+        // Selection (binary tournament) ----
+        for _ in 0..population_size * 2 {
+            let selector = rng.gen_range(0, population_size * population_size);
+            let first_competitor = &initial_population[selector / population_size];
+            let second_competitor = &initial_population[selector % population_size];
+
+            if quick_eval(first_competitor) < quick_eval(second_competitor) {
+                parents.push(first_competitor.clone());
+            } else {
+                parents.push(second_competitor.clone());
+            }
+        }
+
+        // Crossover (arithmetic mean) ----
+        let num_of_crossovers = (crossover_probability * (population_size as f32) / 2.) as usize;
+
+        // Adds children chromosomes
+        for index in 0..num_of_crossovers {
+            auxiliar_population.push(arithmetic_mean_crossover(
+                &parents[2 * index],
+                &parents[2 * index + 1],
+            ));
+        }
+        // Adds remaining chromosomes from parents
+        for index in num_of_crossovers..population_size {
+            auxiliar_population.push(parents[2 * num_of_crossovers + index].clone());
+        }
+
+        // Mutation ----
+        let num_of_mutations = (mutation_probability
+            * population_size as f32
+            * num_gens_per_chromosome as f32) as usize;
+        for _ in 0..num_of_mutations {
+            let selector = rng.gen_range(0, population_size * num_gens_per_chromosome);
+            let chosen_chromosome = &mut auxiliar_population[selector % population_size];
+            let chosen_gen = selector / population_size;
+
+            // Mutate selected gen
+            chosen_chromosome[chosen_gen] += normal.sample(rng) as f32;
+            // Truncate into [0,1]
+            if chosen_chromosome[chosen_gen] < 0. {
+                chosen_chromosome[chosen_gen] = 0.;
+            } else if chosen_chromosome[chosen_gen] > 1. {
+                chosen_chromosome[chosen_gen] = 1.;
+            }
+        }
+    }
 
     return Vec::new();
+}
+
+pub fn arithmetic_mean_crossover(one: &Chromosome, other: &Chromosome) -> Chromosome {
+    let mut new_chromosome: Chromosome = Chromosome::with_capacity(one.len());
+    for gen in 0..one.len() {
+        new_chromosome[gen] = (one[gen] + other[gen]) / 2.;
+    }
+
+    return new_chromosome;
 }
 //---------------------------------------------------------------------------------------
 // Evaluation function for results
