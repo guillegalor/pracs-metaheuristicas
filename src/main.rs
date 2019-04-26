@@ -608,9 +608,11 @@ pub fn genetic_algorithm<T: DataElem<T> + Copy + Clone>(
     let mut current_best_chrom_res = current_population.last().unwrap().clone();
 
     while calls_to_eval < max_calls_to_eval {
-        println!("Generación número: {}", generation_counter);
-        println!("Llamadas a eval: {}", calls_to_eval);
-        println!("Mejor cromosoma: {}", current_best_chrom_res.result);
+        if false {
+            println!("Generación número: {}", generation_counter);
+            println!("Llamadas a eval: {}", calls_to_eval);
+            println!("Mejor cromosoma: {}", current_best_chrom_res.result);
+        }
 
         if DEBUG {
             for elem in current_population.iter() {
@@ -933,115 +935,6 @@ pub fn alg_random_weights<T: DataElem<T> + Copy + Clone>(
     return (c_rate, r_rate, ev_rate);
 }
 
-// 1nn -----------------
-pub fn alg_1nn<T: DataElem<T> + Copy + Clone>(
-    training_set: &Vec<T>,
-    test_set: &Vec<T>,
-) -> (f32, f32, f32) {
-    let mut guessin_1nn: Vec<i32> = Vec::new();
-    let weights_eu_dist = vec![1.; T::get_num_attributes()];
-
-    for elem in test_set.iter() {
-        guessin_1nn.push(
-            classifier_1nn_with_weights(training_set, elem, &weights_eu_dist)
-                .expect("Classifier 1nn en alg_1nn"),
-        );
-    }
-
-    // Results
-    let c_rate: f32 = class_rate(test_set, &guessin_1nn)
-        .expect("No coincide el numero de elementos del test con el numero de <<guessings>>");
-    let r_rate: f32 = 0.0; // (0 cause all weights are equal to 1)
-    let ev_rate: f32 = evaluation_function(c_rate, r_rate, 0.5);
-
-    return (c_rate, r_rate, ev_rate);
-}
-
-// Relief --------------
-pub fn alg_relief<T: DataElem<T> + Copy + Clone>(
-    training_set: &Vec<T>,
-    test_set: &Vec<T>,
-) -> (f32, f32, f32) {
-    let relief_weights = relief_algorithm(training_set);
-    let mut guessin_relief: Vec<i32> = Vec::new();
-
-    for elem in test_set.iter() {
-        guessin_relief.push(
-            classifier_1nn_with_weights(&training_set, elem, &relief_weights)
-                .expect("No coincide el número de pesos  con el de atributos"),
-        );
-    }
-
-    let c_rate: f32 = class_rate(test_set, &guessin_relief)
-        .expect("No coincide el numero de elementos del test con el numero de <<guessings>>");
-    let r_rate: f32 = red_rate(&relief_weights);
-    let ev_rate: f32 = evaluation_function(c_rate, r_rate, 0.5);
-
-    return (c_rate, r_rate, ev_rate);
-}
-
-// Local Search --------
-pub fn alg_local_search<T: DataElem<T> + Copy + Clone>(
-    training_set: &Vec<T>,
-    test_set: &Vec<T>,
-    rng: &mut StdRng,
-) -> (f32, f32, f32) {
-    let weights = local_search(training_set, rng);
-    let mut guessing: Vec<i32> = Vec::new();
-
-    for elem in test_set.iter() {
-        guessing.push(
-            classifier_1nn_with_weights(&training_set, elem, &weights)
-                .expect("No coincide el número de pesos  con el de atributos"),
-        );
-    }
-
-    let c_rate: f32 = class_rate(test_set, &guessing)
-        .expect("No coincide el numero de elementos del test con el numero de <<guessings>>");
-    let r_rate: f32 = red_rate(&weights);
-    let ev_rate = evaluation_function(c_rate, r_rate, 0.5);
-
-    return (c_rate, r_rate, ev_rate);
-}
-
-// Local Search --------
-pub fn alg_genetic<T: DataElem<T> + Copy + Clone>(
-    training_set: &Vec<T>,
-    test_set: &Vec<T>,
-    rng: &mut StdRng,
-) -> (f32, f32, f32) {
-    let weights = genetic_algorithm(
-        training_set,
-        rng,
-        30,
-        0.7,
-        0.001,
-        15000,
-        binary_tournament_selection,
-        // |ch1: &Chromosome, ch2: &Chromosome, rng: &mut StdRng| {
-        //     arithmetic_mean_crossover(ch1, ch2, 0.4)
-        // },
-        |ch1: &Chromosome, ch2: &Chromosome, rng: &mut StdRng| {
-            blx_alpha_crossover(ch1, ch2, 0.3, rng)
-        },
-    );
-    let mut guessing: Vec<i32> = Vec::new();
-
-    for elem in test_set.iter() {
-        guessing.push(
-            classifier_1nn_with_weights(&training_set, elem, &weights)
-                .expect("No coincide el número de pesos  con el de atributos"),
-        );
-    }
-
-    let c_rate: f32 = class_rate(test_set, &guessing)
-        .expect("No coincide el numero de elementos del test con el numero de <<guessings>>");
-    let r_rate: f32 = red_rate(&weights);
-    let ev_rate = evaluation_function(c_rate, r_rate, 0.5);
-
-    return (c_rate, r_rate, ev_rate);
-}
-
 pub fn evaluate<T: DataElem<T> + Copy + Clone>(
     training_set: &Vec<T>,
     test_set: &Vec<T>,
@@ -1077,214 +970,6 @@ pub fn evaluate<T: DataElem<T> + Copy + Clone>(
 ///
 /// # Returns
 /// A Result that contains the error in case it fails.
-// pub fn run<T: DataElem<T> + Copy + Clone>(
-//     file_name: &str,
-//     rng: &mut StdRng,
-// ) -> Result<(), Box<Error>> {
-//     let mut data: Vec<T> = Vec::new();
-//     let mut rdr = csv::Reader::from_path(file_name)?;
-
-//     let mut current_id = 0;
-//     for result in rdr.records() {
-//         let mut aux_record = T::new();
-//         let record = result?;
-
-//         let mut counter = 0;
-
-//         aux_record.set_id(current_id);
-
-//         for field in record.iter() {
-//             // CSV structure: ... 40 data ... , class
-//             if counter != T::get_num_attributes() {
-//                 aux_record.set_attribute(counter, field.parse::<f32>().unwrap());
-//             } else {
-//                 aux_record.set_class(field.parse::<i32>().unwrap());
-//             }
-
-//             counter += 1;
-//         }
-
-//         current_id += 1;
-
-//         data.push(aux_record);
-//     }
-
-//     data = normalize_data(data);
-
-//     let partitions = make_partitions(&data);
-
-//     // Output tables declaration
-//     // let mut table_random = table!(["Partición", "Tasa_clas", "Tasa_red", "Agregado", "Tiempo"]);
-//     // let mut table_random_weights =
-//     //     table!(["Partición", "Tasa_clas", "Tasa_red", "Agregado", "Tiempo"]);
-//     // let mut table_1nn = table!(["Partición", "Tasa_clas", "Tasa_red", "Agregado", "Tiempo"]);
-//     // let mut table_relief = table!(["Partición", "Tasa_clas", "Tasa_red", "Agregado", "Tiempo"]);
-//     // let mut table_localsearch =
-//     //     table!(["Partición", "Tasa_clas", "Tasa_red", "Agregado", "Tiempo"]);
-//     let mut table_genetic = table!(["Partición", "Tasa_clas", "Tasa_red", "Agregado", "Tiempo"]);
-
-//     for test in 0..5 {
-//         // Stablish training and test sets
-//         let mut training_set: Vec<T> = Vec::new();
-//         let mut test_set: Vec<T> = Vec::new();
-
-//         for part in 0..5 {
-//             if part != test {
-//                 training_set.extend(&partitions[part]);
-//             } else {
-//                 test_set = partitions[part].clone();
-//             }
-//         }
-
-//         let mut now = Instant::now();
-
-//         // Random
-
-//         // let results_random = alg_random(&training_set, &test_set, rng);
-
-//         // let time_elapsed_random = now.elapsed().as_millis();
-
-//         // table_random.add_row(row![
-//         //     test,
-//         //     results_random.0,
-//         //     results_random.1,
-//         //     results_random.2,
-//         //     time_elapsed_random
-//         // ]);
-
-//         // // Random weights
-//         // now = Instant::now();
-
-//         // let results_random_weights = alg_random_weights(&training_set, &test_set, rng);
-
-//         // let time_elapsed_random_weights = now.elapsed().as_millis();
-
-//         // table_random_weights.add_row(row![
-//         //     test,
-//         //     results_random_weights.0,
-//         //     results_random_weights.1,
-//         //     results_random_weights.2,
-//         //     time_elapsed_random_weights
-//         // ]);
-
-//         // // 1-NN
-//         // now = Instant::now();
-
-//         // let results_1nn = alg_1nn(&training_set, &test_set);
-
-//         // let time_elapsed_1nn = now.elapsed().as_millis();
-
-//         // table_1nn.add_row(row![
-//         //     test,
-//         //     results_1nn.0,
-//         //     results_1nn.1,
-//         //     results_1nn.2,
-//         //     time_elapsed_1nn
-//         // ]);
-
-//         // // Relief algorithm (greedy)
-//         // now = Instant::now();
-
-//         // let results_relief = alg_relief(&training_set, &test_set);
-
-//         // let time_elapsed_relief = now.elapsed().as_millis();
-
-//         // table_relief.add_row(row![
-//         //     test,
-//         //     results_relief.0,
-//         //     results_relief.1,
-//         //     results_relief.2,
-//         //     time_elapsed_relief
-//         // ]);
-
-//         // // Local search algorithm
-//         // now = Instant::now();
-
-//         // let results_local_search = alg_local_search(&training_set, &test_set, rng);
-
-//         // let time_elapsed_local_search = now.elapsed().as_millis();
-
-//         // table_localsearch.add_row(row![
-//         //     test,
-//         //     results_local_search.0,
-//         //     results_local_search.1,
-//         //     results_local_search.2,
-//         //     time_elapsed_local_search
-//         // ]);
-
-//         // Genetic algorithm
-//         // now = Instant::now();
-
-//         // AGG - Arithmetic
-//         let weights = genetic_algorithm(
-//             &training_set,
-//             rng,
-//             30,
-//             0.7,
-//             0.001,
-//             15000,
-//             binary_tournament_selection,
-//             |ch1: &Chromosome, ch2: &Chromosome, _rng: &mut StdRng| {
-//                 arithmetic_mean_crossover(ch1, ch2, 0.4)
-//             },
-//         );
-//         let results_genetic = evaluate(&training_set, &test_set, &weights, 0.5);
-
-//         let time_elapsed_genetic = now.elapsed().as_millis();
-
-//         table_genetic.add_row(row![
-//             test,
-//             results_genetic.0,
-//             results_genetic.1,
-//             results_genetic.2,
-//             time_elapsed_genetic
-//         ]);
-
-//         // AGG - BLX
-//         let weights = genetic_algorithm(
-//             &training_set,
-//             rng,
-//             30,
-//             0.7,
-//             0.001,
-//             15000,
-//             binary_tournament_selection,
-//             // |ch1: &Chromosome, ch2: &Chromosome, rng: &mut StdRng| {
-//             //     arithmetic_mean_crossover(ch1, ch2, 0.4)
-//             // },
-//             |ch1: &Chromosome, ch2: &Chromosome, rng: &mut StdRng| {
-//                 blx_alpha_crossover(ch1, ch2, 0.3, rng)
-//             },
-//         );
-//         let results_genetic = evaluate(&training_set, &test_set, &weights, 0.5);
-
-//         let time_elapsed_genetic = now.elapsed().as_millis();
-
-//         table_genetic.add_row(row![
-//             test,
-//             results_genetic.0,
-//             results_genetic.1,
-//             results_genetic.2,
-//             time_elapsed_genetic
-//         ]);
-//     }
-
-//     // println!(" Resultados utilizando random");
-//     // table_random.printstd();
-//     // println!(" Resultados utilizando random weights");
-//     // table_random_weights.printstd();
-//     // println!(" Resultados utilizando 1nn");
-//     // table_1nn.printstd();
-//     // println!(" Resultados utilizando Relief");
-//     // table_relief.printstd();
-//     // println!(" Resultados utilizando Busqueda Local");
-//     // table_localsearch.printstd();
-//     println!(" Resultados utilizando Algoritmo Genético");
-//     table_genetic.printstd();
-
-//     Ok(())
-// }
-
 pub fn run<T: DataElem<T> + Copy + Clone>(
     file_name: &str,
     rng: &mut StdRng,
@@ -1322,15 +1007,19 @@ pub fn run<T: DataElem<T> + Copy + Clone>(
     let partitions = make_partitions(&data);
 
     let mut weights_generators: Vec<fn(&Vec<T>, &mut StdRng) -> Vec<f32>> = Vec::new();
+    let mut weights_generators_names: Vec<&str> = Vec::new();
 
     // // 1nn
     // weights_generators
     //     .push(|training_set: &Vec<T>, rng: &mut StdRng| vec![1.; T::get_num_attributes()]);
+    // weights_generators_names.push("1-NN");
     // // Relief algorithm
     // weights_generators
     //     .push(|training_set: &Vec<T>, rng: &mut StdRng| relief_algorithm(training_set));
+    // weights_generators_names.push("Relief");
     // // Local search algorithm
-    weights_generators.push(local_search);
+    // weights_generators.push(local_search);
+    // weights_generators_names.push("Local Search");
     // AGG - Arithmetic
     weights_generators.push(|training_set: &Vec<T>, rng: &mut StdRng| {
         genetic_algorithm(
@@ -1346,6 +1035,7 @@ pub fn run<T: DataElem<T> + Copy + Clone>(
             },
         )
     });
+    weights_generators_names.push("AGG - Arithmetic_0.4");
     // AGG - BLX
     weights_generators.push(|training_set: &Vec<T>, rng: &mut StdRng| {
         genetic_algorithm(
@@ -1361,6 +1051,7 @@ pub fn run<T: DataElem<T> + Copy + Clone>(
             },
         )
     });
+    weights_generators_names.push("AGG - BLX_0.3");
 
     let mut result_tables =
         vec![
@@ -1394,6 +1085,14 @@ pub fn run<T: DataElem<T> + Copy + Clone>(
         }
     }
 
+    for (ind, table) in result_tables.iter().enumerate() {
+        println!(
+            "Resultados para el algoritmo {}",
+            weights_generators_names[ind]
+        );
+        table.printstd();
+    }
+
     Ok(())
 }
 
@@ -1410,19 +1109,25 @@ fn main() {
 
     let mut rng: StdRng = SeedableRng::seed_from_u64(seed);
 
-    println!("Texture--------------");
+    println!("--------------");
+    println!("| Texture    |");
+    println!("--------------");
     if let Err(err) = run::<TextureRecord>("data/texture.csv", &mut rng) {
         println!("error en texture: {}", err);
         process::exit(1);
     }
 
-    println!("Colposcopy-----------");
+    println!("--------------");
+    println!("| Colposcopy |");
+    println!("--------------");
     if let Err(err) = run::<ColposcopyRecord>("data/colposcopy.csv", &mut rng) {
         println!("error en colposcopy: {}", err);
         process::exit(1);
     }
 
-    println!("Ionosphere-----------");
+    println!("--------------");
+    println!("| Ionosphere |");
+    println!("--------------");
     if let Err(err) = run::<IonosphereRecord>("data/ionosphere.csv", &mut rng) {
         println!("error ionosphere: {}", err);
         process::exit(1);
