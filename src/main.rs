@@ -799,45 +799,23 @@ pub fn steady_state_genetic_algorithm<T: DataElem<T> + Copy + Clone>(
 
         // Crossover  ----
         let children = crossover_operator(&parents[0].chromosome, &parents[1].chromosome, rng);
-        let mut children_with_results: Vec<ChromosomeAndResult> = Vec::with_capacity(2);
-        children_with_results.push(ChromosomeAndResult::new(
-            children.0.clone(),
-            quick_eval(&children.0),
-        ));
-        children_with_results.push(ChromosomeAndResult::new(
-            children.1.clone(),
-            quick_eval(&children.1),
-        ));
-        children_with_results.sort();
-
-        if current_population[1].cmp(&children_with_results[0]) == Ordering::Less {
-            current_population.remove(0);
-            current_population.remove(1);
-            current_population.push(children_with_results[0].clone());
-            current_population.push(children_with_results[1].clone());
-        } else if current_population[0].cmp(&children_with_results[1]) == Ordering::Less {
-            current_population.remove(0);
-            current_population.push(children_with_results[1].clone());
-        }
+        let mut auxiliar_population: Vec<ChromosomeAndResult> = Vec::with_capacity(2);
+        auxiliar_population.push(ChromosomeAndResult::new(children.0.clone(), -1.));
+        auxiliar_population.push(ChromosomeAndResult::new(children.1.clone(), -1.));
 
         // Mutation ----
-        let mut num_of_mutations = (mutation_probability
-            * population_size as f32
-            * num_gens_per_chromosome as f32) as usize;
+        let expected_num_of_mutations =
+            mutation_probability * population_size as f32 * num_gens_per_chromosome as f32;
+        let mut num_of_mutations = expected_num_of_mutations as usize;
 
-        // At least do one mutation
-        if num_of_mutations == 0 {
-            num_of_mutations = 1;
-        }
-
-        if DEBUG {
-            println!("Num of mutations: {}", num_of_mutations);
+        if rng.gen_range(0., 1.) < (expected_num_of_mutations - num_of_mutations as f32) {
+            num_of_mutations += 1;
         }
 
         for _ in 0..num_of_mutations {
-            let selector = rng.gen_range(0, population_size * num_gens_per_chromosome);
-            let chosen_chromosome = &mut current_population[selector % population_size].chromosome;
-            let chosen_gen = selector / population_size;
+            let selector = rng.gen_range(0, 2 * num_gens_per_chromosome);
+            let chosen_chromosome = &mut auxiliar_population[selector % 2].chromosome;
+            let chosen_gen = selector / 2;
 
             // Mutation operator
             // Mutate selected gen
@@ -849,8 +827,26 @@ pub fn steady_state_genetic_algorithm<T: DataElem<T> + Copy + Clone>(
                 chosen_chromosome[chosen_gen] = 1.;
             }
 
-            current_population[selector % population_size].result = quick_eval(chosen_chromosome);
+            auxiliar_population[selector % 2].result = quick_eval(chosen_chromosome);
             calls_to_eval += 1;
+        }
+
+        for chrom_and_res in auxiliar_population.iter_mut() {
+            if chrom_and_res.result == -1. {
+                chrom_and_res.result = quick_eval(&chrom_and_res.chromosome);
+                calls_to_eval += 1;
+            }
+        }
+
+        // Replacement ----
+        if current_population[1].cmp(&auxiliar_population[0]) == Ordering::Less {
+            current_population.remove(0);
+            current_population.remove(1);
+            current_population.push(auxiliar_population[0].clone());
+            current_population.push(auxiliar_population[1].clone());
+        } else if current_population[0].cmp(&auxiliar_population[1]) == Ordering::Less {
+            current_population.remove(0);
+            current_population.push(auxiliar_population[1].clone());
         }
 
         current_population.sort();
@@ -1154,6 +1150,7 @@ pub fn run<T: DataElem<T> + Copy + Clone>(
     // // Local search algorithm
     // weights_generators.push(local_search);
     // weights_generators_names.push("Local Search");
+
     // AGG - Arithmetic
     weights_generators.push(|training_set: &Vec<T>, rng: &mut StdRng| {
         generational_genetic_algorithm(
@@ -1170,6 +1167,7 @@ pub fn run<T: DataElem<T> + Copy + Clone>(
         )
     });
     weights_generators_names.push("AGG - Arithmetic_0.4");
+
     // AGG - BLX
     weights_generators.push(|training_set: &Vec<T>, rng: &mut StdRng| {
         generational_genetic_algorithm(
@@ -1186,6 +1184,38 @@ pub fn run<T: DataElem<T> + Copy + Clone>(
         )
     });
     weights_generators_names.push("AGG - BLX_0.3");
+
+    // AGE - Arithmetic_0.4
+    weights_generators.push(|training_set: &Vec<T>, rng: &mut StdRng| {
+        steady_state_genetic_algorithm(
+            training_set,
+            rng,
+            30,
+            0.001,
+            15000,
+            binary_tournament_selection,
+            |ch1: &Chromosome, ch2: &Chromosome, _: &mut StdRng| {
+                arithmetic_mean_crossover(ch1, ch2, 0.4)
+            },
+        )
+    });
+    weights_generators_names.push("AGE - Arithmetic_0.4");
+
+    // AGE - BLX_0.3
+    weights_generators.push(|training_set: &Vec<T>, rng: &mut StdRng| {
+        steady_state_genetic_algorithm(
+            training_set,
+            rng,
+            30,
+            0.001,
+            15000,
+            binary_tournament_selection,
+            |ch1: &Chromosome, ch2: &Chromosome, rng: &mut StdRng| {
+                blx_alpha_crossover(ch1, ch2, 0.3, rng)
+            },
+        )
+    });
+    weights_generators_names.push("AGE - BLX_0.3");
 
     let mut result_tables =
         vec![
