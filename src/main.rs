@@ -507,9 +507,6 @@ pub fn local_search<T: DataElem<T> + Copy + Clone>(data: &Vec<T>, rng: &mut StdR
     {
         let mut aux_weights = weights.clone();
 
-        // Refreshes index vector
-        fill_and_shuffle(&mut indices, rng);
-
         let index = indices.pop().expect("El vector está vacio");
 
         // Mutation
@@ -547,6 +544,10 @@ pub fn local_search<T: DataElem<T> + Copy + Clone>(data: &Vec<T>, rng: &mut StdR
             fill_and_shuffle(&mut indices, rng);
         } else {
             neighbours_without_mutting += 1;
+
+            if indices.is_empty() {
+                fill_and_shuffle(&mut indices, rng);
+            }
         }
 
         num_of_mutations += 1;
@@ -857,8 +858,82 @@ pub fn steady_state_genetic_algorithm<T: DataElem<T> + Copy + Clone>(
     return current_best_chrom_res.chromosome;
 }
 
-// Operators for genetic algorithm -------
+pub fn low_intensity_local_search<T: DataElem<T> + Copy + Clone>(
+    initial_weights_and_result: ChromosomeAndResult,
+    rng: &mut StdRng,
+) -> Vec<f32> {
+    let num_attrs = T::get_num_attributes();
 
+    // Closure that fills and shuffle indices
+    let fill_and_shuffle = |indices: &mut Vec<usize>, rng: &mut StdRng| {
+        *indices = (0..num_attrs).collect();
+        indices.shuffle(rng);
+    };
+
+    // Initialize vector of indices and shuffles it
+    let mut indices: Vec<usize> = Vec::with_capacity(num_attrs);
+    fill_and_shuffle(&mut indices, rng);
+
+    // Normal distribution with mean = 0.0, standard deviation = 0.3
+    let normal = Normal::new(0.0, 0.3);
+
+    // Initialize weights
+    let mut weights: Vec<f32> = initial_weights_and_result.chromosome.clone();
+
+    let mut current_ev_rate = initial_weights_and_result.result;
+
+    for _ in 0..2 * num_attrs {
+        let mut aux_weights = weights.clone();
+
+        // Refreshes index vector
+        fill_and_shuffle(&mut indices, rng);
+
+        let index = indices.pop().expect("El vector está vacio");
+
+        // Mutation
+        aux_weights[index] += normal.sample(rng) as f32;
+
+        // Truncate into [0,1]
+        if aux_weights[index] < 0. {
+            aux_weights[index] = 0.;
+        } else if aux_weights[index] > 1. {
+            aux_weights[index] = 1.;
+        }
+
+        let mut aux_guessing: Vec<i32> = Vec::new();
+        // Initialize candidate guessing
+        for elem in data.iter() {
+            aux_guessing.push(
+                classifier_1nn_with_weights(data, elem, &aux_weights)
+                    .expect("No coincide el número de pesos  con el de atributos(aux_guessing)"),
+            );
+        }
+        let aux_ev_rate = evaluation_function(
+            class_rate(data, &aux_guessing)
+                .expect("No coincide el número de elementos con el número de <<guessings>"),
+            red_rate(&aux_weights),
+            0.5,
+        );
+
+        if aux_ev_rate > current_ev_rate {
+            current_ev_rate = aux_ev_rate;
+            weights = aux_weights;
+
+            neighbours_without_mutting = 0;
+
+            // Refreshes indices
+            fill_and_shuffle(&mut indices, rng);
+        } else {
+            neighbours_without_mutting += 1;
+        }
+
+        num_of_mutations += 1;
+    }
+
+    return weights;
+}
+
+// Operators for genetic algorithm -------
 pub fn binary_tournament_selection(
     population: &Vec<ChromosomeAndResult>,
     num_parents: usize,
@@ -938,6 +1013,7 @@ pub fn blx_alpha_crossover(
 
     chromosomes
 }
+
 //---------------------------------------------------------------------------------------
 // Evaluation function for results
 //---------------------------------------------------------------------------------------
