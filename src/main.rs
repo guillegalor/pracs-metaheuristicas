@@ -540,6 +540,7 @@ pub fn generational_genetic_algorithm<T: DataElem<T> + Copy + Clone>(
         &mut StdRng,
     ) -> Vec<ChromosomeAndResult>,
     crossover_operator: fn(&Chromosome, &Chromosome, &mut StdRng) -> (Chromosome, Chromosome),
+    mutation_operator: fn(&mut Vec<f32>, usize, &mut StdRng),
 ) -> Vec<f32> {
     const DEBUG: bool = false;
 
@@ -551,7 +552,6 @@ pub fn generational_genetic_algorithm<T: DataElem<T> + Copy + Clone>(
 
     let num_gens_per_chromosome = T::get_num_attributes();
     let uniform = Uniform::new(0.0, 1.0);
-    let normal = Normal::new(0.0, 0.3);
     let mut calls_to_eval = 0;
 
     // Initialization ----
@@ -652,14 +652,7 @@ pub fn generational_genetic_algorithm<T: DataElem<T> + Copy + Clone>(
             let chosen_gene = selector / population_size;
 
             // Mutation operator
-            // Mutate selected gen
-            chosen_chromosome[chosen_gene] += normal.sample(rng) as f32;
-            // Truncate into [0,1]
-            if chosen_chromosome[chosen_gene] < 0. {
-                chosen_chromosome[chosen_gene] = 0.;
-            } else if chosen_chromosome[chosen_gene] > 1. {
-                chosen_chromosome[chosen_gene] = 1.;
-            }
+            mutation_operator(chosen_chromosome, chosen_gene, rng);
 
             auxiliar_population[selector % population_size].result = quick_eval(chosen_chromosome);
             calls_to_eval += 1;
@@ -685,7 +678,7 @@ pub fn generational_genetic_algorithm<T: DataElem<T> + Copy + Clone>(
 
         // Replacement ----
         // If new best chrom is worst than the old one
-        if new_best_chrom_res.cmp(&current_best_chrom_res) == Ordering::Less {
+        if new_best_chrom_res < current_best_chrom_res {
             auxiliar_population.remove(0);
             auxiliar_population.push(current_best_chrom_res.clone());
         } else {
@@ -712,6 +705,7 @@ pub fn steady_state_genetic_algorithm<T: DataElem<T> + Copy + Clone>(
         &mut StdRng,
     ) -> Vec<ChromosomeAndResult>,
     crossover_operator: fn(&Chromosome, &Chromosome, &mut StdRng) -> (Chromosome, Chromosome),
+    mutation_operator: fn(&mut Vec<f32>, usize, &mut StdRng),
 ) -> Vec<f32> {
     const DEBUG: bool = false;
 
@@ -723,7 +717,6 @@ pub fn steady_state_genetic_algorithm<T: DataElem<T> + Copy + Clone>(
 
     let num_gens_per_chromosome = T::get_num_attributes();
     let uniform = Uniform::new(0.0, 1.0);
-    let normal = Normal::new(0.0, 0.3);
     let mut calls_to_eval = 0;
 
     // Initialization ----
@@ -789,14 +782,7 @@ pub fn steady_state_genetic_algorithm<T: DataElem<T> + Copy + Clone>(
             let chosen_gene = selector / 2;
 
             // Mutation operator
-            // Mutate selected gen
-            chosen_chromosome[chosen_gene] += normal.sample(rng) as f32;
-            // Truncate into [0,1]
-            if chosen_chromosome[chosen_gene] < 0. {
-                chosen_chromosome[chosen_gene] = 0.;
-            } else if chosen_chromosome[chosen_gene] > 1. {
-                chosen_chromosome[chosen_gene] = 1.;
-            }
+            mutation_operator(chosen_chromosome, chosen_gene, rng);
 
             auxiliar_population[selector % 2].result = quick_eval(chosen_chromosome);
             calls_to_eval += 1;
@@ -810,12 +796,18 @@ pub fn steady_state_genetic_algorithm<T: DataElem<T> + Copy + Clone>(
         }
 
         // Replacement ----
-        if current_population[1].cmp(&auxiliar_population[0]) == Ordering::Less {
+        // Keeps two best of current_population[0], current_population[1],
+        // auxiliar_population[0], auxiliar_population[1]
+
+        // if previous best is worse than new worst replace both previous
+        if current_population[1] < auxiliar_population[0] {
             current_population.remove(0);
             current_population.remove(1);
             current_population.push(auxiliar_population[0].clone());
             current_population.push(auxiliar_population[1].clone());
-        } else if current_population[0].cmp(&auxiliar_population[1]) == Ordering::Less {
+        }
+        // if not, if previous worst is worse than new best replace only him
+        else if current_population[0] < auxiliar_population[1] {
             current_population.remove(0);
             current_population.push(auxiliar_population[1].clone());
         }
@@ -831,10 +823,11 @@ pub fn steady_state_genetic_algorithm<T: DataElem<T> + Copy + Clone>(
 
 pub fn low_intensity_local_search<T: DataElem<T> + Copy + Clone>(
     data: &Vec<T>,
-    initial_weights_and_result: ChromosomeAndResult,
+    weights_and_result: &mut ChromosomeAndResult,
     rng: &mut StdRng,
-) -> Vec<f32> {
+) -> usize {
     let num_attrs = T::get_num_attributes();
+    let calls_to_eval = 0;
 
     // Closure that fills and shuffle indices
     let fill_and_shuffle = |indices: &mut Vec<usize>, rng: &mut StdRng| {
@@ -849,12 +842,8 @@ pub fn low_intensity_local_search<T: DataElem<T> + Copy + Clone>(
     // Normal distribution with mean = 0.0, standard deviation = 0.3
     let normal = Normal::new(0.0, 0.3);
 
-    // Initialize weights and evaluation
-    let mut weights: Vec<f32> = initial_weights_and_result.chromosome.clone();
-    let mut current_ev_rate = initial_weights_and_result.result;
-
     for _ in 0..2 * num_attrs {
-        let mut aux_weights = weights.clone();
+        let mut aux_weights = weights_and_result.chromosome.clone();
 
         let index = indices.pop().expect("El vector está vacio");
 
@@ -869,10 +858,11 @@ pub fn low_intensity_local_search<T: DataElem<T> + Copy + Clone>(
         }
 
         let aux_ev_rate = evaluate(data, data, &aux_weights, 0.5).2;
+        calls_to_eval += 1;
 
-        if aux_ev_rate > current_ev_rate {
-            current_ev_rate = aux_ev_rate;
-            weights = aux_weights;
+        if aux_ev_rate > weights_and_result.result {
+            weights_and_result.result = aux_ev_rate;
+            weights_and_result.chromosome = aux_weights;
             fill_and_shuffle(&mut indices, rng);
         } else {
             if indices.is_empty() {
@@ -881,7 +871,214 @@ pub fn low_intensity_local_search<T: DataElem<T> + Copy + Clone>(
         }
     }
 
-    return weights;
+    calls_to_eval
+}
+
+pub fn generational_memetic_algorithm<T: DataElem<T> + Copy + Clone>(
+    data: &Vec<T>,
+    rng: &mut StdRng,
+    population_size: usize,
+    crossover_probability: f32,
+    mutation_probability: f32,
+    max_calls_to_eval: usize,
+    memetic_type: usize,
+    selection_operator: fn(
+        &Vec<ChromosomeAndResult>,
+        usize,
+        &mut StdRng,
+    ) -> Vec<ChromosomeAndResult>,
+    crossover_operator: fn(&Chromosome, &Chromosome, &mut StdRng) -> (Chromosome, Chromosome),
+    mutation_operator: fn(&mut Vec<f32>, usize, &mut StdRng),
+) -> Vec<f32> {
+    const DEBUG: bool = false;
+
+    let quick_eval = |weights: &Chromosome| {
+        return evaluate(data, data, weights, 0.5).2;
+    };
+
+    let mut generation_counter = 0;
+
+    let num_gens_per_chromosome = T::get_num_attributes();
+    let uniform = Uniform::new(0.0, 1.0);
+    let mut calls_to_eval = 0;
+
+    // Initialization ----
+    let mut current_population: Vec<ChromosomeAndResult> = Vec::with_capacity(population_size);
+
+    let mut aux_weights: Vec<f32> = Vec::with_capacity(T::get_num_attributes());
+    // Initialize random weights (using normal distribution)
+    for _ in 0..population_size {
+        for _ in 0..num_gens_per_chromosome {
+            aux_weights.push(uniform.sample(rng));
+        }
+
+        let aux_chrom_and_result = ChromosomeAndResult {
+            chromosome: aux_weights.clone(),
+            result: quick_eval(&aux_weights),
+        };
+
+        calls_to_eval += 1;
+
+        current_population.push(aux_chrom_and_result);
+
+        aux_weights.clear();
+    }
+
+    current_population.sort();
+    let mut current_best_chrom_res = current_population.last().unwrap().clone();
+    generation_counter += 1;
+
+    while calls_to_eval < max_calls_to_eval {
+        if false {
+            println!("Generación número: {}", generation_counter);
+            println!("Llamadas a eval: {}", calls_to_eval);
+            println!("Mejor cromosoma: {}", current_best_chrom_res.result);
+        }
+
+        if DEBUG {
+            for elem in current_population.iter() {
+                println!("{}", elem.result);
+            }
+            println!("\n");
+        }
+
+        let mut auxiliar_population: Vec<ChromosomeAndResult> = Vec::with_capacity(population_size);
+
+        // Selection  ----
+        let parents = selection_operator(&current_population, population_size * 2, rng);
+
+        // Crossover (arithmetic mean) ----
+        let num_of_crossovers = (crossover_probability * (population_size as f32) / 2.) as usize;
+
+        if DEBUG {
+            println!("Num of crossover: {}", num_of_crossovers);
+            println!("Parents");
+            for elem in parents.iter() {
+                println!("{}", elem.result);
+            }
+        }
+
+        // Adds children chromosomes
+        for index in 0..num_of_crossovers {
+            let children = crossover_operator(
+                &parents[2 * index].chromosome,
+                &parents[2 * index + 1].chromosome,
+                rng,
+            );
+
+            auxiliar_population.push(ChromosomeAndResult::new(children.0, -1.));
+            auxiliar_population.push(ChromosomeAndResult::new(children.1, -1.));
+        }
+
+        // Adds remaining chromosomes from parents
+        for index in num_of_crossovers..population_size {
+            auxiliar_population.push(parents[index + num_of_crossovers].clone());
+        }
+
+        if DEBUG {
+            println!("Childrens + Some Parents");
+            for elem in auxiliar_population.iter() {
+                println!("{}", elem.result);
+            }
+        }
+
+        // Mutation ----
+        let expected_num_of_mutations =
+            mutation_probability * population_size as f32 * num_gens_per_chromosome as f32;
+        let mut num_of_mutations = expected_num_of_mutations as usize;
+
+        if rng.gen_range(0., 1.) < (expected_num_of_mutations - num_of_mutations as f32) {
+            num_of_mutations += 1;
+        }
+
+        if DEBUG {
+            println!("Num of mutations: {}", num_of_mutations);
+        }
+
+        for _ in 0..num_of_mutations {
+            let selector = rng.gen_range(0, population_size * num_gens_per_chromosome);
+            let chosen_chromosome = &mut auxiliar_population[selector % population_size].chromosome;
+            let chosen_gene = selector / population_size;
+
+            // Mutation operator
+            mutation_operator(chosen_chromosome, chosen_gene, rng);
+
+            auxiliar_population[selector % population_size].result = quick_eval(chosen_chromosome);
+            calls_to_eval += 1;
+        }
+
+        // Evaluation ----
+        for chrom_and_res in auxiliar_population.iter_mut() {
+            if chrom_and_res.result == -1. {
+                chrom_and_res.result = quick_eval(&chrom_and_res.chromosome);
+                calls_to_eval += 1;
+            }
+        }
+
+        auxiliar_population.sort();
+        let new_best_chrom_res = auxiliar_population.last().unwrap().clone();
+
+        if DEBUG {
+            println!("New population(without replacing)");
+            for elem in auxiliar_population.iter() {
+                println!("{}", elem.result);
+            }
+        }
+
+        // Replacement ----
+        // If new best chrom is worst than the old one
+        if new_best_chrom_res < current_best_chrom_res {
+            auxiliar_population.remove(0);
+            auxiliar_population.push(current_best_chrom_res.clone());
+        } else {
+            current_best_chrom_res = new_best_chrom_res;
+        }
+
+        current_population = auxiliar_population;
+
+        generation_counter += 1;
+
+        if generation_counter % 10 == 0 {
+            match memetic_type {
+                // Apply local search to every chromosome
+                1 => {
+                    for chrom_and_res in current_population.iter_mut() {
+                        calls_to_eval += low_intensity_local_search(data, chrom_and_res, rng);
+                    }
+                }
+
+                // Apply to a random percentage of the population
+                2 => {
+                    let local_seach_probability = 0.1;
+                    let expected_local_searches = local_seach_probability * population_size as f32;
+                    let num_local_searches = expected_local_searches as usize;
+
+                    if rng.gen_range(0., 1.) < expected_local_searches - num_local_searches as f32 {
+                        num_local_searches += 1;
+                    }
+
+                    for _ in 0..num_local_searches {
+                        let index = rng.gen_range(0, population_size);
+                        calls_to_eval +=
+                            low_intensity_local_search(data, &mut current_population[index], rng);
+                    }
+                }
+                3 => {
+                    let num_local_searches = (0.1 * population_size as f32) as usize;
+
+                    for ind in 0..num_local_searches {
+                        calls_to_eval += low_intensity_local_search(
+                            data,
+                            &mut current_population[population_size - ind - 1],
+                            rng,
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    return current_best_chrom_res.chromosome;
 }
 
 // Operators for genetic algorithm -------
@@ -942,7 +1139,7 @@ pub fn blx_alpha_crossover(
         if one[gene] < other[gene] {
             c_max = other[gene];
             c_min = one[gene];
-        } else if one[gene] < other[gene] {
+        } else if other[gene] < one[gene] {
             c_max = one[gene];
             c_min = other[gene];
         } else {
@@ -1198,46 +1395,52 @@ pub fn run<T: DataElem<T> + Copy + Clone>(
     //     local_search(
     //         training_set,
     //         rng,
-    //         |weights: &mut Vec<f32>, index: usize, rng: &mut StdRng| {
-    //             weight_mutation(weights, index, 0.0, 0.3, rng)
-    //         },
+    //        |weights: &mut Vec<f32>, index: usize, rng: &mut StdRng| {
+    //            weight_mutation(weights, index, 0.0, 0.3, rng)
+    //        },
     //     )
     // });
     // weights_generators_names.push("Local Search");
 
-    // // AGG - Arithmetic
-    // weights_generators.push(|training_set: &Vec<T>, rng: &mut StdRng| {
-    //     generational_genetic_algorithm(
-    //         training_set,
-    //         rng,
-    //         30,
-    //         0.7,
-    //         0.001,
-    //         15000,
-    //         binary_tournament_selection,
-    //         |ch1: &Chromosome, ch2: &Chromosome, _rng: &mut StdRng| {
-    //             arithmetic_mean_crossover(ch1, ch2, 0.4)
-    //         },
-    //     )
-    // });
-    // weights_generators_names.push("AGG - Arithmetic_0.4");
+    // AGG - Arithmetic_0.4
+    weights_generators.push(|training_set: &Vec<T>, rng: &mut StdRng| {
+        generational_genetic_algorithm(
+            training_set,
+            rng,
+            30,
+            0.7,
+            0.001,
+            15000,
+            binary_tournament_selection,
+            |ch1: &Chromosome, ch2: &Chromosome, _rng: &mut StdRng| {
+                arithmetic_mean_crossover(ch1, ch2, 0.4)
+            },
+            |weights: &mut Vec<f32>, index: usize, rng: &mut StdRng| {
+                weight_mutation(weights, index, 0.0, 0.3, rng)
+            },
+        )
+    });
+    weights_generators_names.push("AGG - Arithmetic_0.4");
 
-    // // AGG - BLX
-    // weights_generators.push(|training_set: &Vec<T>, rng: &mut StdRng| {
-    //     generational_genetic_algorithm(
-    //         training_set,
-    //         rng,
-    //         30,
-    //         0.7,
-    //         0.001,
-    //         15000,
-    //         binary_tournament_selection,
-    //         |ch1: &Chromosome, ch2: &Chromosome, rng: &mut StdRng| {
-    //             blx_alpha_crossover(ch1, ch2, 0.3, rng)
-    //         },
-    //     )
-    // });
-    // weights_generators_names.push("AGG - BLX_0.3");
+    // AGG - BLX_0.3
+    weights_generators.push(|training_set: &Vec<T>, rng: &mut StdRng| {
+        generational_genetic_algorithm(
+            training_set,
+            rng,
+            30,
+            0.7,
+            0.001,
+            15000,
+            binary_tournament_selection,
+            |ch1: &Chromosome, ch2: &Chromosome, rng: &mut StdRng| {
+                blx_alpha_crossover(ch1, ch2, 0.3, rng)
+            },
+            |weights: &mut Vec<f32>, index: usize, rng: &mut StdRng| {
+                weight_mutation(weights, index, 0.0, 0.3, rng)
+            },
+        )
+    });
+    weights_generators_names.push("AGG - BLX_0.3");
 
     // AGE - Arithmetic_0.4
     weights_generators.push(|training_set: &Vec<T>, rng: &mut StdRng| {
@@ -1250,6 +1453,9 @@ pub fn run<T: DataElem<T> + Copy + Clone>(
             binary_tournament_selection,
             |ch1: &Chromosome, ch2: &Chromosome, _: &mut StdRng| {
                 arithmetic_mean_crossover(ch1, ch2, 0.4)
+            },
+            |weights: &mut Vec<f32>, index: usize, rng: &mut StdRng| {
+                weight_mutation(weights, index, 0.0, 0.3, rng)
             },
         )
     });
@@ -1266,6 +1472,9 @@ pub fn run<T: DataElem<T> + Copy + Clone>(
             binary_tournament_selection,
             |ch1: &Chromosome, ch2: &Chromosome, rng: &mut StdRng| {
                 blx_alpha_crossover(ch1, ch2, 0.3, rng)
+            },
+            |weights: &mut Vec<f32>, index: usize, rng: &mut StdRng| {
+                weight_mutation(weights, index, 0.0, 0.3, rng)
             },
         )
     });
