@@ -662,13 +662,12 @@ pub fn generational_genetic_algorithm<T: DataElem<T> + Copy + Clone>(
         }
 
         // Mutation ----
-        let mut num_of_mutations = (mutation_probability
-            * population_size as f32
-            * num_gens_per_chromosome as f32) as usize;
+        let expected_num_of_mutations =
+            mutation_probability * population_size as f32 * num_gens_per_chromosome as f32;
+        let mut num_of_mutations = expected_num_of_mutations as usize;
 
-        // At least do one mutation
-        if num_of_mutations == 0 {
-            num_of_mutations = 1;
+        if rng.gen_range(0., 1.) < (expected_num_of_mutations - num_of_mutations as f32) {
+            num_of_mutations += 1;
         }
 
         if DEBUG {
