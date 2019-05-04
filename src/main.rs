@@ -1422,125 +1422,125 @@ pub fn run<T: DataElem<T> + Copy + Clone>(
     // });
     // weights_generators_names.push("Local Search");
 
-    // // AGG - Arithmetic_0.4
-    // weights_generators.push(|training_set: &Vec<T>, rng: &mut StdRng| {
-    //     generational_genetic_algorithm(
-    //         training_set,
-    //         rng,
-    //         30,
-    //         0.7,
-    //         0.001,
-    //         15000,
-    //         binary_tournament_selection,
-    //         |ch1: &Chromosome, ch2: &Chromosome, _rng: &mut StdRng| {
-    //             arithmetic_mean_crossover(ch1, ch2, 0.4)
-    //         },
-    //         |weights: &mut Vec<f32>, index: usize, rng: &mut StdRng| {
-    //             weight_mutation(weights, index, 0.0, 0.3, rng)
-    //         },
-    //     )
-    // });
-    // weights_generators_names.push("AGG - Arithmetic_0.4");
+    // AGG - Arithmetic_0.4
+    weights_generators.push(|training_set: &Vec<T>, rng: &mut StdRng| {
+        generational_genetic_algorithm(
+            training_set,
+            rng,
+            30,
+            0.7,
+            0.001,
+            25000,
+            binary_tournament_selection,
+            |ch1: &Chromosome, ch2: &Chromosome, _rng: &mut StdRng| {
+                arithmetic_mean_crossover(ch1, ch2, 0.4)
+            },
+            |weights: &mut Vec<f32>, index: usize, rng: &mut StdRng| {
+                weight_mutation(weights, index, 0.0, 0.3, rng)
+            },
+        )
+    });
+    weights_generators_names.push("AGG - Arithmetic_0.4");
 
-    // // AGG - BLX_0.3
-    // weights_generators.push(|training_set: &Vec<T>, rng: &mut StdRng| {
-    //     generational_genetic_algorithm(
-    //         training_set,
-    //         rng,
-    //         30,
-    //         0.7,
-    //         0.001,
-    //         15000,
-    //         binary_tournament_selection,
-    //         |ch1: &Chromosome, ch2: &Chromosome, rng: &mut StdRng| {
-    //             blx_alpha_crossover(ch1, ch2, 0.3, rng)
-    //         },
-    //         |weights: &mut Vec<f32>, index: usize, rng: &mut StdRng| {
-    //             weight_mutation(weights, index, 0.0, 0.3, rng)
-    //         },
-    //     )
-    // });
-    // weights_generators_names.push("AGG - BLX_0.3");
+    // AGG - BLX_0.3
+    weights_generators.push(|training_set: &Vec<T>, rng: &mut StdRng| {
+        generational_genetic_algorithm(
+            training_set,
+            rng,
+            30,
+            0.7,
+            0.001,
+            25000,
+            binary_tournament_selection,
+            |ch1: &Chromosome, ch2: &Chromosome, rng: &mut StdRng| {
+                blx_alpha_crossover(ch1, ch2, 0.3, rng)
+            },
+            |weights: &mut Vec<f32>, index: usize, rng: &mut StdRng| {
+                weight_mutation(weights, index, 0.0, 0.3, rng)
+            },
+        )
+    });
+    weights_generators_names.push("AGG - BLX_0.3");
 
-    // // AGE - Arithmetic_0.4
-    // weights_generators.push(|training_set: &Vec<T>, rng: &mut StdRng| {
-    //     steady_state_genetic_algorithm(
-    //         training_set,
-    //         rng,
-    //         30,
-    //         0.001,
-    //         15000,
-    //         binary_tournament_selection,
-    //         |ch1: &Chromosome, ch2: &Chromosome, _: &mut StdRng| {
-    //             arithmetic_mean_crossover(ch1, ch2, 0.4)
-    //         },
-    //         |weights: &mut Vec<f32>, index: usize, rng: &mut StdRng| {
-    //             weight_mutation(weights, index, 0.0, 0.3, rng)
-    //         },
-    //     )
-    // });
-    // weights_generators_names.push("AGE - Arithmetic_0.4");
+    // AGE - Arithmetic_0.4
+    weights_generators.push(|training_set: &Vec<T>, rng: &mut StdRng| {
+        steady_state_genetic_algorithm(
+            training_set,
+            rng,
+            30,
+            0.001,
+            25000,
+            binary_tournament_selection,
+            |ch1: &Chromosome, ch2: &Chromosome, _: &mut StdRng| {
+                arithmetic_mean_crossover(ch1, ch2, 0.4)
+            },
+            |weights: &mut Vec<f32>, index: usize, rng: &mut StdRng| {
+                weight_mutation(weights, index, 0.0, 0.3, rng)
+            },
+        )
+    });
+    weights_generators_names.push("AGE - Arithmetic_0.4");
 
-    // // AGE - BLX_0.3
-    // weights_generators.push(|training_set: &Vec<T>, rng: &mut StdRng| {
-    //     steady_state_genetic_algorithm(
-    //         training_set,
-    //         rng,
-    //         30,
-    //         0.001,
-    //         15000,
-    //         binary_tournament_selection,
-    //         |ch1: &Chromosome, ch2: &Chromosome, rng: &mut StdRng| {
-    //             blx_alpha_crossover(ch1, ch2, 0.3, rng)
-    //         },
-    //         |weights: &mut Vec<f32>, index: usize, rng: &mut StdRng| {
-    //             weight_mutation(weights, index, 0.0, 0.3, rng)
-    //         },
-    //     )
-    // });
-    // weights_generators_names.push("AGE - BLX_0.3");
+    // AGE - BLX_0.3
+    weights_generators.push(|training_set: &Vec<T>, rng: &mut StdRng| {
+        steady_state_genetic_algorithm(
+            training_set,
+            rng,
+            30,
+            0.001,
+            25000,
+            binary_tournament_selection,
+            |ch1: &Chromosome, ch2: &Chromosome, rng: &mut StdRng| {
+                blx_alpha_crossover(ch1, ch2, 0.3, rng)
+            },
+            |weights: &mut Vec<f32>, index: usize, rng: &mut StdRng| {
+                weight_mutation(weights, index, 0.0, 0.3, rng)
+            },
+        )
+    });
+    weights_generators_names.push("AGE - BLX_0.3");
 
-    // // AM - 1
-    // weights_generators.push(|training_set: &Vec<T>, rng: &mut StdRng| {
-    //     generational_memetic_algorithm(
-    //         training_set,
-    //         rng,
-    //         10,
-    //         0.7,
-    //         0.001,
-    //         15000,
-    //         1,
-    //         binary_tournament_selection,
-    //         |ch1: &Chromosome, ch2: &Chromosome, rng: &mut StdRng| {
-    //             blx_alpha_crossover(ch1, ch2, 0.3, rng)
-    //         },
-    //         |weights: &mut Vec<f32>, index: usize, rng: &mut StdRng| {
-    //             weight_mutation(weights, index, 0.0, 0.3, rng)
-    //         },
-    //     )
-    // });
-    // weights_generators_names.push("AM - 1");
+    // AM - 1
+    weights_generators.push(|training_set: &Vec<T>, rng: &mut StdRng| {
+        generational_memetic_algorithm(
+            training_set,
+            rng,
+            10,
+            0.7,
+            0.001,
+            25000,
+            1,
+            binary_tournament_selection,
+            |ch1: &Chromosome, ch2: &Chromosome, rng: &mut StdRng| {
+                blx_alpha_crossover(ch1, ch2, 0.3, rng)
+            },
+            |weights: &mut Vec<f32>, index: usize, rng: &mut StdRng| {
+                weight_mutation(weights, index, 0.0, 0.3, rng)
+            },
+        )
+    });
+    weights_generators_names.push("AM - 1");
 
-    // // AM - 0.1
-    // weights_generators.push(|training_set: &Vec<T>, rng: &mut StdRng| {
-    //     generational_memetic_algorithm(
-    //         training_set,
-    //         rng,
-    //         10,
-    //         0.7,
-    //         0.001,
-    //         15000,
-    //         2,
-    //         binary_tournament_selection,
-    //         |ch1: &Chromosome, ch2: &Chromosome, rng: &mut StdRng| {
-    //             blx_alpha_crossover(ch1, ch2, 0.3, rng)
-    //         },
-    //         |weights: &mut Vec<f32>, index: usize, rng: &mut StdRng| {
-    //             weight_mutation(weights, index, 0.0, 0.3, rng)
-    //         },
-    //     )
-    // });
-    // weights_generators_names.push("AM - 0.1");
+    // AM - 0.1
+    weights_generators.push(|training_set: &Vec<T>, rng: &mut StdRng| {
+        generational_memetic_algorithm(
+            training_set,
+            rng,
+            10,
+            0.7,
+            0.001,
+            25000,
+            2,
+            binary_tournament_selection,
+            |ch1: &Chromosome, ch2: &Chromosome, rng: &mut StdRng| {
+                blx_alpha_crossover(ch1, ch2, 0.3, rng)
+            },
+            |weights: &mut Vec<f32>, index: usize, rng: &mut StdRng| {
+                weight_mutation(weights, index, 0.0, 0.3, rng)
+            },
+        )
+    });
+    weights_generators_names.push("AM - 0.1");
 
     // AM - 0.1best
     weights_generators.push(|training_set: &Vec<T>, rng: &mut StdRng| {
@@ -1550,7 +1550,7 @@ pub fn run<T: DataElem<T> + Copy + Clone>(
             10,
             0.7,
             0.001,
-            15000,
+            25000,
             3,
             binary_tournament_selection,
             |ch1: &Chromosome, ch2: &Chromosome, rng: &mut StdRng| {

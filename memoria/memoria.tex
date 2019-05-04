@@ -219,6 +219,7 @@ Dicho esto, nuestro trabajo será estudiar diversos algoritmos que generen un ve
 
 \section{Consideraciones previas}
 \subsection{Esquemas de representación}
+\subsubsection{Práctica 1}
 En primer lugar, para representar cada tipo de dato distinto utilizamos una interfaz llamada DataElem, de manera que cualquier estructura de datos que implemente DataElem deberá tener definidos los siguientes métodos:
 \begin{itemize}
     \item \texttt{\textbf{fn} new()}. Función de clase que devuelve un elemento por defecto
@@ -237,8 +238,10 @@ Dicho esto, hemos utilizado tres estructuras de datos que implementan esta inter
     \item \texttt{ColposcopyRecord}, la cuál contiene un identificador, un array con 62 valores realespara almacenar los atributos, y un entero que representa la clase de dicho elemento.
     \item \texttt{TextureRecord}, la cuál contiene un identificador, un array con 34 valores reales para almacenar los atributos, y un entero que representa la clase de dicho elemento.
 \end{itemize}
-
+\subsubsection{Práctica 2}
+En esta práctica hemos definido el tipo \texttt{Chromosome} que es un vector de pesos, y además hemos definido una estructura \texttt{ChromosomeAndResult} que contiene un \texttt{Chromosome} y una variable \texttt{result}, que es un flotante que almacena la evaluación de dicho vector de pesos. Sobre esta estructura definimos un orden que consiste en comparar los resultados de ambos elementos.
 \subsection{Operadores comunes}
+\subsubsection{Práctica 1}
 Dados dos elementos de un tipo de dato que implemente dicha interfaz, hemos definido la función que calcula la \textbf{distancia euclídea} ponderada por un vector de pesos de la siguiente forma:
 
 \begin{verbatim}
@@ -295,6 +298,123 @@ La primera es \texttt{normalize\_data}, la cual devuelve un conjunto con el mism
 
 La segunda es \texttt{make\_partitions}, la cual devuelve un vector con 5 conjuntos de elementos que representan 5 particiones, que mantienen en la medida de lo posible la distribución de clases del conjunto original.\\
 
+\subsubsection{Práctica 2}
+Para esta práctica hemos definido cuatro operadores, uno de selección, dos de cruce y uno de mutación. Estos se los pasaremos posteriormente a los algoritmos principales, permitiendo en un futuro definir un operador arbitrario y poder ejecutar los algoritmos sin tener que modificar la función principal.
+
+El primer operador que hemos definido es \textbf{binary\_tournament\_selection}, que realiza la selección por torneo binario. Este toma como argumentos el conjunto de \texttt{ChromosomeAndResult} del que eligirá a los posibles padres, el número de padres que queremos generar, y por último el rng para controlar la generación aleatoria.
+
+\begin{verbatim}
+binary_tournament_selection(population[], num_parents, rng)  {
+    population_size = population.size();
+    parents[num_parents];
+
+    for _ in 0..num_parents {
+        selector =
+            rng.gen_range(0, population_size * population_size);
+        first_competitor = population[selector / population_size];
+        second_competitor = population[selector % population_size];
+
+        if first_competitor > second_competitor {
+            parents.push(first_competitor);
+        } else {
+            parents.push(second_competitor);
+        }
+    }
+
+    return parents;
+}
+
+\end{verbatim}
+
+El siguiente operador que definimos es \textbf{arithmetic\_mean\_crossover}, que toma como argumentos dos \texttt{Chromosome} y un porcentaje \texttt{alpha}. Inicialmente este operador devolvía un único hijo que era la combinación convexa entre los dos padres al 50\%. Sin embargo, para ayudar a la abstracción del problema lo hemos definido de manera que puedas elegir el porcentaje que mantiene de cada uno de los padres. Así, devuelve dos hijos, uno que posea un porcentaje $\alpha$ de un padre y  un porcentaje $1-\alpha$ de otro y viceversa.
+
+\begin{verbatim}
+arithmetic_mean_crossover(one, other, alpha) {
+    chromosomes[2];
+
+    for gene in 0..one.size() {
+        chromosomes[0]
+            .push(one[gene] * (alpha) + other[gene] * (1. - alpha));
+        chromosomes[1]
+            .push(one[gene] * (1. - alpha) + other[gene] * (alpha));
+    }
+
+    return chromosomes;
+}
+
+\end{verbatim}
+
+A continuación definimos otro operador de cruce, \textbf{blx\_alpha\_crossover}. Este toma como argumentos dos \texttt{Chromosome} al igual que al anterior, otro porcentaje \texttt{alpha} , y un rng.
+
+\begin{verbatim}
+blx_alpha_crossover(one, other, alpha, rng) {
+    chromosomes[2];
+
+    for gene in 0..one.size() {
+        c_max;
+        c_min;
+
+        if one[gene] < other[gene] {
+            c_max = other[gene];
+            c_min = one[gene];
+        } else if other[gene] < one[gene] {
+            c_max = one[gene];
+            c_min = other[gene];
+        } else {
+            chromosomes[0].push(one[gene]);
+            chromosomes[1].push(one[gene]);
+
+            continue;
+        }
+
+        dist = c_max - c_min;
+
+        gene_value1 =
+            rng.gen_range(c_min - dist * alpha, c_max + dist * alpha);
+        gene_value2 =
+            rng.gen_range(c_min - dist * alpha, c_max + dist * alpha);
+
+        // Truncate into [0,1] gene_value1
+        if gene_value1 < 0. {
+            gene_value1 = 0.;
+        } else if gene_value1 > 1. {
+            gene_value1 = 1.;
+        }
+
+        // Truncate into [0,1] gene_value2
+        if gene_value2 < 0. {
+            gene_value2 = 0.;
+        } else if gene_value2 > 1. {
+            gene_value2 = 1.;
+        }
+
+        chromosomes[0].push(gene_value1);
+        chromosomes[1].push(gene_value2);
+    }
+
+    chromosomes
+}
+
+\end{verbatim}
+
+% TODO BUSCAR NOMBRE DEL OPERADOR
+Por último, el operador de mutación $Mov(\mu, \sigma^2)$ que ya utilizamos en la práctica uno lo hemos definido en una función a parte, con el fin de evitar repiticiones.
+
+\begin{verbatim}
+weight_mutation(&weights, index, mean, std_deviation, rng) {
+    // Normal distribution with determined mean and standard deviation
+    normal = Normal(mean, std_deviation);
+
+    weights[index] += normal.sample(rng);
+
+    // Truncate into [0,1]
+    if weights[index] < 0. {
+        weights[index] = 0.;
+    } else if weights[index] > 1. {
+        weights[index] = 1.;
+    }
+}
+\end{verbatim}
 \subsection{Función objetivo}
 Fijado un problema de clasificación, para evaluar el rendimiento de un vector de pesos calculado sobre un conjunto de datos utilizaremos tres funciones:
 \begin{itemize}
@@ -316,7 +436,8 @@ Donde $w$ es el número de pesos con valor menor a $0.2$ y $W$ es el número tot
 
 \newpage
 \section{Descripción de los algoritmos}
-\subsection{Algoritmo RELIEF (greedy)}
+\subsection{Práctica 1}
+\subsubsection{Algoritmo RELIEF (greedy)}
 
 El algoritmo RELIEF itera sobre todos los elementos del conjunto de datos que recibe, así que de ahora en adelante nos referiremos al elemento actual como \texttt{current\_elem}, y hasta que lo mencionemos de nuevo todo el código estará dentro de dicho bucle.
 \begin{verbatim}
@@ -395,7 +516,7 @@ for w in weights {
 return weights;
 \end{verbatim}
 
-\subsection{Algoritmo de búsqueda local}
+\subsubsection{Algoritmo de búsqueda local}
 En primer lugar, inicializamos todas las variables necesarias, y clasificamos el conjunto de datos utilizando un conjunto de pesos generados aleatoriamente.
 \begin{verbatim}
 local_search(data[], rng) {
@@ -479,6 +600,301 @@ A continuación, en el bucle principal seleccionamos un índice aleatorio, lo mu
 
 \end{verbatim}
 
+\subsection{Práctica 2}
+\subsubsection{Algoritmo Genético Generacional}
+Los argumentos que acepta esta función son:
+\begin{itemize}
+    \item \textbf{data} Conjunto sobre el que evaluaremos los pesos.
+    \item \textbf{rng} Generador de números aleatorios.
+    \item \textbf{population\_size} Tamaño de la población durante la ejecución del algoritmo.
+    \item \textbf{crossover\_probability} Probabilidad de cruce.
+    \item \textbf{mutation\_probability} Probabilidad de mutación.
+    \item \textbf{max\_calls\_to\_eval} Número maximo de llamadas a la función de evaluación
+    \item \textbf{selection\_operator} Operador de selección. Debe aceptar como argumentos un vector de \texttt{ChromosomeAndResult}, un entero, un rng y devolver un vector de \texttt{ChromosomeAndResult}.
+    \item \textbf{crossover\_operator} Operador de cruce. Debe aceptar como argumentos dos \texttt{Chromosome}, un rng y devolver dos \texttt{Chromosome}.
+    \item \textbf{mutation\_operator} Operador de mutación. Debe aceptar como argumentos una referencia a un \texttt{Chromosome}, un entero y un rng.
+\end{itemize}
+\begin{verbatim}
+generational_genetic_algorithm(
+    data,
+    rng,
+    population_size,
+    crossover_probability,
+    mutation_probability,
+    max_calls_to_eval,
+    selection_operator(ChromosomeAndResult[], int, StdRng)
+        -> ChromosomeAndResult[],
+    crossover_operator(Chromosome, Chromosome, StdRng)
+        -> Chromosome[2],
+    mutation_operator(&Chromosome, int, StdRng)
+){
+    quick_eval = |weights: &Chromosome| {
+        return evaluate(data, data, weights, 0.5).2;
+    };
+\end{verbatim}
+
+En primer lugar creamos una función lambda que para evaluar de manera cómoda un vector de pesos.
+A continuación inicializamos todas las variables, y rellenamos la población de cromosomas generados aleatoriamente. Tras esto, ordenamos la población y almacenamos el mejor cromosoma.
+
+\begin{verbatim}
+    generation_counter = 0;
+
+    num_gens_per_chromosome = get_num_attributes();
+    uniform = Uniform(0.0, 1.0);
+    calls_to_eval = 0;
+
+    // Initialization ----
+    current_population[];
+
+    aux_weights[num_gens_per_chromosome];
+    // Initialize random weights (using uniform distribution)
+    for _ in 0..population_size {
+        for _ in 0..num_gens_per_chromosome {
+            aux_weights.push(uniform.sample(rng));
+        }
+
+        aux_chrom_and_result = ChromosomeAndResult {
+            chromosome: aux_weights,
+            result: quick_eval(aux_weights),
+        };
+
+        calls_to_eval += 1;
+
+        current_population.push(aux_chrom_and_result);
+
+        aux_weights.clear();
+    }
+
+    current_population.sort();
+    current_best_chrom_res = current_population.last();
+\end{verbatim}
+
+A continuación, entramos en el bucle principal del que no saldremos hasta que no agotemos el número de llamadas a la función de evaluación. \\
+
+Aplicamos el operador de selección que nos pasan como argumento y generamos tantos padres como tamaño tenga nuestra población. Ahora, como el operador de cruce siempre nos devuelve dos hijos, cruzamos el número de padres esperado (calculado a partir de la probabilidad de cruce), y añadimos los hijos a la población auxiliar (los añadimos con resultado $-1$ para calcularlo más tarde). Tras esto, añadimos a la población auxiliar el resto de padres hasta alcanzar el tamaño de la población.
+
+\begin{verbatim}
+    while calls_to_eval < max_calls_to_eval {
+
+        let mut auxiliar_population: Vec<ChromosomeAndResult> = Vec::with_capacity(population_size);
+
+        // Selection  ----
+        parents = selection_operator(current_population, population_size, rng);
+
+        // Crossover (arithmetic mean) ----
+        num_of_crossovers = (crossover_probability * population_size ) / 2;
+
+        // Adds children chromosomes
+        for index in 0..num_of_crossovers {
+            children = crossover_operator(
+                parents[2 * index].chromosome,
+                parents[2 * index + 1].chromosome,
+                rng,
+            );
+
+            auxiliar_population.push(ChromosomeAndResult.new(children[0], -1.));
+            auxiliar_population.push(ChromosomeAndResult.new(children[1], -1.));
+        }
+
+        // Adds remaining chromosomes from parents
+        for index in 2 * num_of_crossovers..population_size {
+            auxiliar_population.push(parents[index]);
+        }
+\end{verbatim}
+
+Ahora, para calcular el número de mutaciones a realizar, calculamos el número de mutaciones esperadas sin perder los decimales. Con esto, el número de mutaciones a realizar será la parte de real de dicha esperanza. Para ser más precisos con el número de mutaciones, generaremos un número aleatorio entre $0$ y $1$. Si este es más pequeño que la parte real de la esperanza, sumaremos uno al número de mutaciones a realizar.
+
+\begin{verbatim}
+        // Mutation ----
+        expected_num_of_mutations =
+            mutation_probability * population_size  * num_gens_per_chromosome ;
+        num_of_mutations = expected_num_of_mutations as usize;
+
+        if rng.gen_range(0, 1) < (expected_num_of_mutations - num_of_mutations) {
+            num_of_mutations += 1;
+        }
+
+        for _ in 0..num_of_mutations {
+            selector = rng.gen_range(0, population_size * num_gens_per_chromosome);
+            chosen_chromosome = auxiliar_population[selector % population_size].chromosome;
+            chosen_gene = selector / population_size;
+
+            // Mutation operator
+            mutation_operator(chosen_chromosome, chosen_gene, rng);
+
+            auxiliar_population[selector % population_size].result =
+                quick_eval(chosen_chromosome);
+
+            calls_to_eval += 1;
+        }
+
+\end{verbatim}
+
+Por último evaluamos todos aquellos cromosomas que no estuviesen ya evaluados, ordenamos la población auxiliar y almacenamos el mejor cromosoma de la población auxiliar. Tras esto, comparamos los dos mejores cromosomas y nos quedamos con el mejor de los dos para la nueva población. Actualizamos toda la población y continuamos.
+
+\begin{verbatim}
+        // Evaluation ----
+        for chrom_and_res in auxiliar_population.iter_mut() {
+            if chrom_and_res.result == -1. {
+                chrom_and_res.result = quick_eval(&chrom_and_res.chromosome);
+                calls_to_eval += 1;
+            }
+        }
+
+        auxiliar_population.sort();
+        let new_best_chrom_res = auxiliar_population.last().unwrap().clone();
+
+        // Replacement ----
+        // If new best chrom is worst than the old one
+        if new_best_chrom_res < current_best_chrom_res {
+            auxiliar_population.remove(0);
+            auxiliar_population.push(current_best_chrom_res.clone());
+        } else {
+            current_best_chrom_res = new_best_chrom_res;
+        }
+
+        current_population = auxiliar_population;
+
+        generation_counter += 1;
+    }
+
+    return current_best_chrom_res.chromosome;
+}
+\end{verbatim}
+
+\subsubsection{Algoritmo Genético Estacionario}
+Para evitar repeticiones, de este algoritmo únicamente hablaremos de las diferencias con el generacional.
+\begin{verbatim}
+steady_state_genetic_algorithm(
+    data,
+    rng,
+    population_size,
+    crossover_probability,
+    mutation_probability,
+    max_calls_to_eval,
+    selection_operator(ChromosomeAndResult[], int, StdRng)
+        -> ChromosomeAndResult[],
+    crossover_operator(Chromosome, Chromosome, StdRng)
+        -> Chromosome[2],
+    mutation_operator(&Chromosome, int, StdRng)
+){
+    quick_eval = |weights: &Chromosome| {
+        return evaluate(data, data, weights, 0.5).2;
+    };
+
+    generation_counter = 0;
+
+    num_gens_per_chromosome = get_num_attributes();
+    uniform = Uniform(0.0, 1.0);
+    calls_to_eval = 0;
+
+    // Initialization ----
+    current_population[population_size];
+
+    aux_weights[num_gens_per_chromosome];
+    // Initialize random weights (using normal distribution)
+    for _ in 0..population_size {
+        for _ in 0..num_gens_per_chromosome {
+            aux_weights.push(uniform.sample(rng));
+        }
+
+        let aux_chrom_and_result = ChromosomeAndResult {
+            chromosome: aux_weights,
+            result: quick_eval(aux_weights),
+        };
+
+        calls_to_eval += 1;
+
+        current_population.push(aux_chrom_and_result);
+
+        aux_weights.clear();
+    }
+
+    current_population.sort();
+    current_best_chrom_res = current_population.last();
+
+    while calls_to_eval < max_calls_to_eval {
+\end{verbatim}
+En este algoritmo únicamente necesitaremos dos hijos, así que solo generamos dos padres.
+\begin{verbatim}
+        // Selection  ----
+        let parents = selection_operator(current_population, 2, rng);
+
+        // Crossover  ----
+        children =
+            crossover_operator(
+                parents[0].chromosome,
+                parents[1].chromosome, rng
+            );
+        auxiliar_population[2];
+        auxiliar_population.push(
+            ChromosomeAndResult.new(children[0], -1));
+        auxiliar_population.push(
+            ChromosomeAndResult.new(children[1], -1));
+
+        // Mutation ----
+        expected_num_of_mutations =
+            mutation_probability * population_size  * num_gens_per_chromosome ;
+        num_of_mutations = expected_num_of_mutations as usize;
+
+        if rng.gen_range(0, 1) < (expected_num_of_mutations - num_of_mutations) {
+            num_of_mutations += 1;
+        }
+
+        for _ in 0..num_of_mutations {
+            selector = rng.gen_range(0, population_size * num_gens_per_chromosome);
+            chosen_chromosome = auxiliar_population[selector % population_size].chromosome;
+            chosen_gene = selector / population_size;
+
+            // Mutation operator
+            mutation_operator(chosen_chromosome, chosen_gene, rng);
+
+            auxiliar_population[selector % population_size].result =
+                quick_eval(chosen_chromosome);
+
+            calls_to_eval += 1;
+        }
+
+        for chrom_and_res in auxiliar_population.iter_mut() {
+            if chrom_and_res.result == -1. {
+                chrom_and_res.result = quick_eval(chrom_and_res.chromosome);
+                calls_to_eval += 1;
+            }
+        }
+
+        auxiliar_population.sort();
+\end{verbatim}
+Ahora, al reemplazar, comparamos los dos hijos que hemos obtenido con los peores cromosomas de nuestra población actual, y de entre estos cuatro nos quedamos con los dos mejores.
+\begin{verbatim}
+        // Replacement ----
+        // Keeps two best of current_population[0], current_population[1],
+        // auxiliar_population[0], auxiliar_population[1]
+
+        // if previous best is worse than new worst replace both previous
+        if current_population[1] < auxiliar_population[0] {
+            current_population.remove(0);
+            current_population.remove(1);
+            current_population.push(auxiliar_population[0]);
+            current_population.push(auxiliar_population[1]);
+        }
+        // if not, if previous worst is worse than new best replace only him
+        else if current_population[0] < auxiliar_population[1] {
+            current_population.remove(0);
+            current_population.push(auxiliar_population[1]);
+        }
+
+        current_population.sort();
+        current_best_chrom_res = current_population.last();
+
+        generation_counter += 1;
+    }
+
+    return current_best_chrom_res.chromosome;
+}
+
+\end{verbatim}
+
+\subsubsection{Algoritmo Memético}
 \newpage
 \section{Procedimiento considerado para desarrollar la práctica.}
 La implementación de la práctica se ha llevado a cabo en el lenguaje de programación Rust, y no se ha utilizado ningún framework de metaheurísticas.\\
