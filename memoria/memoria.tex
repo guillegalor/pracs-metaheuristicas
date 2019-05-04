@@ -676,7 +676,7 @@ Aplicamos el operador de selección que nos pasan como argumento y generamos tan
 \begin{verbatim}
     while calls_to_eval < max_calls_to_eval {
 
-        let mut auxiliar_population: Vec<ChromosomeAndResult> = Vec::with_capacity(population_size);
+        auxiliar_population[population_size];
 
         // Selection  ----
         parents = selection_operator(current_population, population_size, rng);
@@ -736,19 +736,19 @@ Por último evaluamos todos aquellos cromosomas que no estuviesen ya evaluados, 
         // Evaluation ----
         for chrom_and_res in auxiliar_population.iter_mut() {
             if chrom_and_res.result == -1. {
-                chrom_and_res.result = quick_eval(&chrom_and_res.chromosome);
+                chrom_and_res.result = quick_eval(chrom_and_res.chromosome);
                 calls_to_eval += 1;
             }
         }
 
         auxiliar_population.sort();
-        let new_best_chrom_res = auxiliar_population.last().unwrap().clone();
+        new_best_chrom_res = auxiliar_population.last();
 
         // Replacement ----
         // If new best chrom is worst than the old one
         if new_best_chrom_res < current_best_chrom_res {
             auxiliar_population.remove(0);
-            auxiliar_population.push(current_best_chrom_res.clone());
+            auxiliar_population.push(current_best_chrom_res);
         } else {
             current_best_chrom_res = new_best_chrom_res;
         }
@@ -798,7 +798,7 @@ steady_state_genetic_algorithm(
             aux_weights.push(uniform.sample(rng));
         }
 
-        let aux_chrom_and_result = ChromosomeAndResult {
+        aux_chrom_and_result = ChromosomeAndResult {
             chromosome: aux_weights,
             result: quick_eval(aux_weights),
         };
@@ -818,7 +818,7 @@ steady_state_genetic_algorithm(
 En este algoritmo únicamente necesitaremos dos hijos, así que solo generamos dos padres.
 \begin{verbatim}
         // Selection  ----
-        let parents = selection_operator(current_population, 2, rng);
+        parents = selection_operator(current_population, 2, rng);
 
         // Crossover  ----
         children =
@@ -895,6 +895,199 @@ Ahora, al reemplazar, comparamos los dos hijos que hemos obtenido con los peores
 \end{verbatim}
 
 \subsubsection{Algoritmo Memético}
+Este funciona exactamente igual que el algoritmo generacional descrito anteriormente, con la diferencia de que cada 10 generaciones realiza una búsqueda local de baja intensidad sobre cierto subconjunto de la población. Este depende del parámetro \texttt{memetic\_type}, que puede valer $1$, $2$, o $3$ respectivamente.
+\begin{verbatim}
+generational_memetic_algorithm(
+    data,
+    rng,
+    population_size,
+    crossover_probability,
+    mutation_probability,
+    max_calls_to_eval,
+    memetic_type,
+    selection_operator(ChromosomeAndResult[], int, StdRng)
+        -> ChromosomeAndResult[],
+    crossover_operator(Chromosome, Chromosome, StdRng)
+        -> Chromosome[2],
+    mutation_operator(&Chromosome, int, StdRng)
+){
+    quick_eval = |weights: &Chromosome| {
+        return evaluate(data, data, weights, 0.5).2;
+    };
+
+    generation_counter = 0;
+
+    num_gens_per_chromosome = get_num_attributes();
+    uniform = Uniform(0.0, 1.0);
+    calls_to_eval = 0;
+
+    // Initialization ----
+    current_population[];
+
+    aux_weights[num_gens_per_chromosome];
+    // Initialize random weights (using uniform distribution)
+    for _ in 0..population_size {
+        for _ in 0..num_gens_per_chromosome {
+            aux_weights.push(uniform.sample(rng));
+        }
+
+        aux_chrom_and_result = ChromosomeAndResult {
+            chromosome: aux_weights,
+            result: quick_eval(aux_weights),
+        };
+
+        calls_to_eval += 1;
+
+        current_population.push(aux_chrom_and_result);
+
+        aux_weights.clear();
+    }
+
+    current_population.sort();
+    current_best_chrom_res = current_population.last();
+
+    while calls_to_eval < max_calls_to_eval {
+
+        auxiliar_population[population_size];
+
+        // Selection  ----
+        parents = selection_operator(current_population, population_size, rng);
+
+        // Crossover (arithmetic mean) ----
+        num_of_crossovers = (crossover_probability * population_size ) / 2;
+
+        // Adds children chromosomes
+        for index in 0..num_of_crossovers {
+            children = crossover_operator(
+                parents[2 * index].chromosome,
+                parents[2 * index + 1].chromosome,
+                rng,
+            );
+
+            auxiliar_population.push(ChromosomeAndResult.new(children[0], -1.));
+            auxiliar_population.push(ChromosomeAndResult.new(children[1], -1.));
+        }
+
+        // Adds remaining chromosomes from parents
+        for index in 2 * num_of_crossovers..population_size {
+            auxiliar_population.push(parents[index]);
+        }
+
+        // Mutation ----
+        expected_num_of_mutations =
+            mutation_probability * population_size  * num_gens_per_chromosome ;
+        num_of_mutations = expected_num_of_mutations as usize;
+
+        if rng.gen_range(0, 1) < (expected_num_of_mutations - num_of_mutations) {
+            num_of_mutations += 1;
+        }
+
+        for _ in 0..num_of_mutations {
+            selector = rng.gen_range(0, population_size * num_gens_per_chromosome);
+            chosen_chromosome = auxiliar_population[selector % population_size].chromosome;
+            chosen_gene = selector / population_size;
+
+            // Mutation operator
+            mutation_operator(chosen_chromosome, chosen_gene, rng);
+
+            auxiliar_population[selector % population_size].result =
+                quick_eval(chosen_chromosome);
+
+            calls_to_eval += 1;
+        }
+
+        // Evaluation ----
+        for chrom_and_res in auxiliar_population.iter_mut() {
+            if chrom_and_res.result == -1. {
+                chrom_and_res.result = quick_eval(&chrom_and_res.chromosome);
+                calls_to_eval += 1;
+            }
+        }
+
+        auxiliar_population.sort();
+        new_best_chrom_res = auxiliar_population.last();
+
+        // Replacement ----
+        // If new best chrom is worst than the old one
+        if new_best_chrom_res < current_best_chrom_res {
+            auxiliar_population.remove(0);
+            auxiliar_population.push(current_best_chrom_res.clone());
+        } else {
+            current_best_chrom_res = new_best_chrom_res;
+        }
+
+        current_population = auxiliar_population;
+
+        generation_counter += 1;
+
+\end{verbatim}
+
+Hasta aquí el algoritmo es igual que el generacional como ya dijimos. Aquí, cada 10 generaciones aplicamos la búsqueda local de baja intensidad. Según los posibles valores de \texttt{memetic\_type} la aplicamos sobre distintos subconjuntos.
+\begin{itemize}
+    \item \textbf{1.} Aplicamos la búsqueda local de baja intensidad sobre cada cromosoma de nuestra población
+    \item \textbf{2.} La aplicamos sobre un $10\%$ aleatorio de la población (calculamos el número de elementos sobre los que aplicarla de la misma forma que lo hicimos para el número de mutaciones)
+    \item \textbf{3.} La aplicamos sobre un $10\%$ de la población, pero en lugar de elegirlo de manera aleatoria elegimos a los mejores de la población
+\end{itemize}
+
+\begin{verbatim}
+        if generation_counter % 10 == 0 {
+            match memetic_type {
+                // Apply local search to every chromosome
+                1 => {
+                    for chrom_and_res in current_population {
+                        calls_to_eval +=
+                            low_intensity_local_search(
+                                data,
+                                chrom_and_res,
+                                rng
+                            );
+                    }
+                }
+
+                // Apply to a random percentage of the population
+                2 => {
+                    local_seach_probability = 0.1;
+                    expected_local_searches =
+                        local_seach_probability * population_size;
+                    num_local_searches = expected_local_searches as usize;
+
+                    if rng.gen_range(0., 1.) <
+                        expected_local_searches - num_local_searches {
+                        num_local_searches += 1;
+                    }
+
+                    for _ in 0..num_local_searches {
+                        index = rng.gen_range(0, population_size);
+                        calls_to_eval +=
+                            low_intensity_local_search(
+                                data,
+                                current_population[index],
+                                rng
+                            );
+                    }
+                }
+                3 => {
+                    num_local_searches = (0.1 * population_size) as usize;
+
+                    for ind in 0..num_local_searches {
+                        calls_to_eval += low_intensity_local_search(
+                            data,
+                            current_population[population_size - ind - 1],
+                            rng,
+                        );
+                    }
+                }
+            }
+
+            current_population.sort();
+            current_best_chrom_res = current_population.last();
+        }
+    }
+
+    return current_best_chrom_res.chromosome;
+}
+\end{verbatim}
+
 \newpage
 \section{Procedimiento considerado para desarrollar la práctica.}
 La implementación de la práctica se ha llevado a cabo en el lenguaje de programación Rust, y no se ha utilizado ningún framework de metaheurísticas.\\
