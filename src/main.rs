@@ -1430,7 +1430,7 @@ pub fn run<T: DataElem<T> + Copy + Clone>(
             30,
             0.7,
             0.001,
-            25000,
+            15000,
             binary_tournament_selection,
             |ch1: &Chromosome, ch2: &Chromosome, _rng: &mut StdRng| {
                 arithmetic_mean_crossover(ch1, ch2, 0.4)
@@ -1450,7 +1450,7 @@ pub fn run<T: DataElem<T> + Copy + Clone>(
             30,
             0.7,
             0.001,
-            25000,
+            15000,
             binary_tournament_selection,
             |ch1: &Chromosome, ch2: &Chromosome, rng: &mut StdRng| {
                 blx_alpha_crossover(ch1, ch2, 0.3, rng)
@@ -1469,7 +1469,7 @@ pub fn run<T: DataElem<T> + Copy + Clone>(
             rng,
             30,
             0.001,
-            25000,
+            15000,
             binary_tournament_selection,
             |ch1: &Chromosome, ch2: &Chromosome, _: &mut StdRng| {
                 arithmetic_mean_crossover(ch1, ch2, 0.4)
@@ -1488,7 +1488,7 @@ pub fn run<T: DataElem<T> + Copy + Clone>(
             rng,
             30,
             0.001,
-            25000,
+            15000,
             binary_tournament_selection,
             |ch1: &Chromosome, ch2: &Chromosome, rng: &mut StdRng| {
                 blx_alpha_crossover(ch1, ch2, 0.3, rng)
@@ -1508,7 +1508,7 @@ pub fn run<T: DataElem<T> + Copy + Clone>(
             10,
             0.7,
             0.001,
-            25000,
+            15000,
             1,
             binary_tournament_selection,
             |ch1: &Chromosome, ch2: &Chromosome, rng: &mut StdRng| {
@@ -1529,7 +1529,7 @@ pub fn run<T: DataElem<T> + Copy + Clone>(
             10,
             0.7,
             0.001,
-            25000,
+            15000,
             2,
             binary_tournament_selection,
             |ch1: &Chromosome, ch2: &Chromosome, rng: &mut StdRng| {
@@ -1550,7 +1550,7 @@ pub fn run<T: DataElem<T> + Copy + Clone>(
             10,
             0.7,
             0.001,
-            25000,
+            15000,
             3,
             binary_tournament_selection,
             |ch1: &Chromosome, ch2: &Chromosome, rng: &mut StdRng| {

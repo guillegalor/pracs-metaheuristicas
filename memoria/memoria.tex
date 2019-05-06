@@ -268,18 +268,21 @@ Utilizando dicha distancia, definimos la función que actua como el \textbf{clas
 classifier_1nn_with_weights(data[], item, weights[]) {
     class_min = data[0].class;
     dist_min = eu_dist_with_weigths(item, data[0], weights);
+    aux_weights[];
 
     // Discards weights lower than 0.2
     for w in weights {
         if w < 0.2 {
-            w = 0.0;
+            aux_weights.push(0.0);
+        } else {
+            aux_weights.push(w);
         }
     }
 
     for example in data {
         if example.id != item.id {
             aux_distance = euclidean_distance_with_weigths
-                (item, example, weights);
+                (item, example, aux_weights);
             if aux_distance < d_min {
                 class_min = example.class;
                 dist_min = aux_distance;
@@ -674,69 +677,77 @@ A continuación, entramos en el bucle principal del que no saldremos hasta que n
 Aplicamos el operador de selección que nos pasan como argumento y generamos tantos padres como tamaño tenga nuestra población. Ahora, como el operador de cruce siempre nos devuelve dos hijos, cruzamos el número de padres esperado (calculado a partir de la probabilidad de cruce), y añadimos los hijos a la población auxiliar (los añadimos con resultado $-1$ para calcularlo más tarde). Tras esto, añadimos a la población auxiliar el resto de padres hasta alcanzar el tamaño de la población.
 
 \begin{verbatim}
-    while calls_to_eval < max_calls_to_eval {
+while calls_to_eval < max_calls_to_eval {
 
-        auxiliar_population[population_size];
+    auxiliar_population[population_size];
 
-        // Selection  ----
-        parents = selection_operator(current_population, population_size, rng);
+    // Selection  ----
+    parents =
+        selection_operator(current_population, population_size, rng);
 
-        // Crossover (arithmetic mean) ----
-        num_of_crossovers = (crossover_probability * population_size ) / 2;
+    // Crossover (arithmetic mean) ----
+    num_of_crossovers =
+        (crossover_probability * population_size ) / 2;
 
-        // Adds children chromosomes
-        for index in 0..num_of_crossovers {
-            children = crossover_operator(
-                parents[2 * index].chromosome,
-                parents[2 * index + 1].chromosome,
-                rng,
-            );
+    // Adds children chromosomes
+    for index in 0..num_of_crossovers {
+        children = crossover_operator(
+            parents[2 * index].chromosome,
+            parents[2 * index + 1].chromosome,
+            rng,
+        );
 
-            auxiliar_population.push(ChromosomeAndResult.new(children[0], -1.));
-            auxiliar_population.push(ChromosomeAndResult.new(children[1], -1.));
-        }
+        auxiliar_population.push(
+            ChromosomeAndResult.new(children[0], -1.));
+        auxiliar_population.push(
+            ChromosomeAndResult.new(children[1], -1.));
+    }
 
-        // Adds remaining chromosomes from parents
-        for index in 2 * num_of_crossovers..population_size {
-            auxiliar_population.push(parents[index]);
-        }
+    // Adds remaining chromosomes from parents
+    for index in 2 * num_of_crossovers..population_size {
+        auxiliar_population.push(parents[index]);
+    }
 \end{verbatim}
 
 Ahora, para calcular el número de mutaciones a realizar, calculamos el número de mutaciones esperadas sin perder los decimales. Con esto, el número de mutaciones a realizar será la parte de real de dicha esperanza. Para ser más precisos con el número de mutaciones, generaremos un número aleatorio entre $0$ y $1$. Si este es más pequeño que la parte real de la esperanza, sumaremos uno al número de mutaciones a realizar.
 
 \begin{verbatim}
-        // Mutation ----
-        expected_num_of_mutations =
-            mutation_probability * population_size  * num_gens_per_chromosome ;
-        num_of_mutations = expected_num_of_mutations as usize;
+// Mutation ----
+expected_num_of_mutations =
+    mutation_probability * population_size  * num_gens_per_chromosome;
+num_of_mutations = expected_num_of_mutations as usize;
 
-        if rng.gen_range(0, 1) < (expected_num_of_mutations - num_of_mutations) {
-            num_of_mutations += 1;
-        }
+if rng.gen_range(0, 1) <
+    (expected_num_of_mutations - num_of_mutations) {
+    num_of_mutations += 1;
+}
 
-        for _ in 0..num_of_mutations {
-            selector = rng.gen_range(0, population_size * num_gens_per_chromosome);
-            chosen_chromosome = auxiliar_population[selector % population_size].chromosome;
-            chosen_gene = selector / population_size;
+for _ in 0..num_of_mutations {
+    selector =
+        rng.gen_range(0, population_size * num_gens_per_chromosome);
+    chosen_chromosome =
+        auxiliar_population[selector % population_size].chromosome;
+    chosen_gene = selector / population_size;
 
-            // Mutation operator
-            mutation_operator(chosen_chromosome, chosen_gene, rng);
+    // Mutation operator
+    mutation_operator(chosen_chromosome, chosen_gene, rng);
 
-            auxiliar_population[selector % population_size].result =
-                quick_eval(chosen_chromosome);
+    auxiliar_population[selector % population_size].result =
+        quick_eval(chosen_chromosome);
 
-            calls_to_eval += 1;
-        }
+    calls_to_eval += 1;
+}
 
 \end{verbatim}
 
 Por último evaluamos todos aquellos cromosomas que no estuviesen ya evaluados, ordenamos la población auxiliar y almacenamos el mejor cromosoma de la población auxiliar. Tras esto, comparamos los dos mejores cromosomas y nos quedamos con el mejor de los dos para la nueva población. Actualizamos toda la población y continuamos.
 
 \begin{verbatim}
-        // Evaluation ----
-        for chrom_and_res in auxiliar_population.iter_mut() {
+    // Evaluation ----
+        for chrom_and_res in auxiliar_population {
             if chrom_and_res.result == -1. {
-                chrom_and_res.result = quick_eval(chrom_and_res.chromosome);
+                chrom_and_res.result =
+                    quick_eval(chrom_and_res.chromosome);
                 calls_to_eval += 1;
             }
         }
@@ -817,67 +828,73 @@ steady_state_genetic_algorithm(
 \end{verbatim}
 En este algoritmo únicamente necesitaremos dos hijos, así que solo generamos dos padres.
 \begin{verbatim}
-        // Selection  ----
-        parents = selection_operator(current_population, 2, rng);
+// Selection  ----
+parents = selection_operator(current_population, 2, rng);
 
-        // Crossover  ----
-        children =
-            crossover_operator(
-                parents[0].chromosome,
-                parents[1].chromosome, rng
-            );
-        auxiliar_population[2];
-        auxiliar_population.push(
-            ChromosomeAndResult.new(children[0], -1));
-        auxiliar_population.push(
-            ChromosomeAndResult.new(children[1], -1));
+// Crossover  ----
+children =
+    crossover_operator(
+        parents[0].chromosome,
+        parents[1].chromosome, rng
+    );
+auxiliar_population[2];
+auxiliar_population.push(
+    ChromosomeAndResult.new(children[0], -1));
+auxiliar_population.push(
+    ChromosomeAndResult.new(children[1], -1));
 
-        // Mutation ----
-        expected_num_of_mutations =
-            mutation_probability * population_size  * num_gens_per_chromosome ;
-        num_of_mutations = expected_num_of_mutations as usize;
+// Mutation ----
+expected_num_of_mutations =
+    mutation_probability * population_size  * num_gens_per_chromosome ;
+num_of_mutations = expected_num_of_mutations as usize;
 
-        if rng.gen_range(0, 1) < (expected_num_of_mutations - num_of_mutations) {
-            num_of_mutations += 1;
-        }
+if rng.gen_range(0, 1) <
+    (expected_num_of_mutations - num_of_mutations) {
+    num_of_mutations += 1;
+}
 
-        for _ in 0..num_of_mutations {
-            selector = rng.gen_range(0, population_size * num_gens_per_chromosome);
-            chosen_chromosome = auxiliar_population[selector % population_size].chromosome;
-            chosen_gene = selector / population_size;
+for _ in 0..num_of_mutations {
+    selector =
+        rng.gen_range(0, population_size * num_gens_per_chromosome);
+    chosen_chromosome =
+        auxiliar_population[selector % population_size].chromosome;
+    chosen_gene = selector / population_size;
 
-            // Mutation operator
-            mutation_operator(chosen_chromosome, chosen_gene, rng);
+    // Mutation operator
+    mutation_operator(chosen_chromosome, chosen_gene, rng);
 
-            auxiliar_population[selector % population_size].result =
-                quick_eval(chosen_chromosome);
+    auxiliar_population[selector % population_size].result =
+        quick_eval(chosen_chromosome);
 
-            calls_to_eval += 1;
-        }
+    calls_to_eval += 1;
+}
 
-        for chrom_and_res in auxiliar_population.iter_mut() {
-            if chrom_and_res.result == -1. {
-                chrom_and_res.result = quick_eval(chrom_and_res.chromosome);
-                calls_to_eval += 1;
-            }
-        }
+for chrom_and_res in auxiliar_population.iter_mut() {
+    if chrom_and_res.result == -1. {
+        chrom_and_res.result = quick_eval(chrom_and_res.chromosome);
+        calls_to_eval += 1;
+    }
+}
 
         auxiliar_population.sort();
 \end{verbatim}
 Ahora, al reemplazar, comparamos los dos hijos que hemos obtenido con los peores cromosomas de nuestra población actual, y de entre estos cuatro nos quedamos con los dos mejores.
 \begin{verbatim}
         // Replacement ----
-        // Keeps two best of current_population[0], current_population[1],
+        // Keeps two best of
+        // current_population[0], current_population[1],
         // auxiliar_population[0], auxiliar_population[1]
 
-        // if previous best is worse than new worst replace both previous
+        // if previous best is worse than new worst replace
+        // both previous
         if current_population[1] < auxiliar_population[0] {
             current_population.remove(0);
             current_population.remove(1);
             current_population.push(auxiliar_population[0]);
             current_population.push(auxiliar_population[1]);
         }
-        // if not, if previous worst is worse than new best replace only him
+        // if not, if previous worst is worse than new best
+        // replace only him
         else if current_population[0] < auxiliar_population[1] {
             current_population.remove(0);
             current_population.push(auxiliar_population[1]);
@@ -890,6 +907,61 @@ Ahora, al reemplazar, comparamos los dos hijos que hemos obtenido con los peores
     }
 
     return current_best_chrom_res.chromosome;
+}
+
+\end{verbatim}
+
+\subsubsection{Búsqueda local de baja intensidad}
+Para el siguiente algoritmo hemos tenido que implementar una búsqueda local modificada, la cual únicamente realiza $2\cdot número\_de\_pesos$ iteraciones y funciona prácticamente igual que  la descrita anteriormente. Esta toma como argumentos el conjunto de datos, una referencia a un cromosoma junto a su evaluación, siendo su vector de pesos el inicial y un rng. La salida es el número de llamadas realizadas a la función inicial, y almacena en el vector que le pasamos como argumento el resultado de la búsqueda.
+
+\begin{verbatim}
+low_intensity_local_search(data[], weights_and_result[], rng){
+    num_attrs = get_num_attributes();
+    mut calls_to_eval = 0;
+
+    // Closure that fills and shuffle indices
+    fill_and_shuffle = |indices: &mut Vec<usize>, rng: &mut StdRng|{
+        *indices = (0..num_attrs).collect();
+        indices.shuffle(rng);
+    };
+
+    // Initialize vector of indices and shuffles it
+    indices[num_attrs];
+    fill_and_shuffle(&indices, rng);
+
+    // Normal distribution with mean = 0.0, standard deviation = 0.3
+    let normal = Normal(0.0, 0.3);
+
+    for _ in 0..2 * num_attrs {
+        aux_weights = weights_and_result.chromosome;
+
+        index = indices.pop();
+
+        // Mutation
+        aux_weights[index] += normal.sample(rng) as f32;
+
+        // Truncate into [0,1]
+        if aux_weights[index] < 0. {
+            aux_weights[index] = 0.;
+        } else if aux_weights[index] > 1. {
+            aux_weights[index] = 1.;
+        }
+
+        aux_ev_rate = evaluate(data, data, &aux_weights, 0.5).2;
+        calls_to_eval += 1;
+
+        if aux_ev_rate > weights_and_result.result {
+            weights_and_result.result = aux_ev_rate;
+            weights_and_result.chromosome = aux_weights;
+            fill_and_shuffle(&indices, rng);
+        } else {
+            if indices.is_empty() {
+                fill_and_shuffle(&indices, rng);
+            }
+        }
+    }
+
+    return calls_to_eval;
 }
 
 \end{verbatim}
@@ -951,10 +1023,16 @@ generational_memetic_algorithm(
         auxiliar_population[population_size];
 
         // Selection  ----
-        parents = selection_operator(current_population, population_size, rng);
+        parents =
+            selection_operator(
+                current_population,
+                population_size,
+                rng
+            );
 
         // Crossover (arithmetic mean) ----
-        num_of_crossovers = (crossover_probability * population_size ) / 2;
+        num_of_crossovers =
+            (crossover_probability * population_size ) / 2;
 
         // Adds children chromosomes
         for index in 0..num_of_crossovers {
@@ -964,8 +1042,10 @@ generational_memetic_algorithm(
                 rng,
             );
 
-            auxiliar_population.push(ChromosomeAndResult.new(children[0], -1.));
-            auxiliar_population.push(ChromosomeAndResult.new(children[1], -1.));
+            auxiliar_population.push(
+                ChromosomeAndResult.new(children[0], -1.));
+            auxiliar_population.push(
+                ChromosomeAndResult.new(children[1], -1.));
         }
 
         // Adds remaining chromosomes from parents
@@ -975,16 +1055,26 @@ generational_memetic_algorithm(
 
         // Mutation ----
         expected_num_of_mutations =
-            mutation_probability * population_size  * num_gens_per_chromosome ;
+            mutation_probability *
+            population_size  *
+            num_gens_per_chromosome ;
+
         num_of_mutations = expected_num_of_mutations as usize;
 
-        if rng.gen_range(0, 1) < (expected_num_of_mutations - num_of_mutations) {
+        if rng.gen_range(0, 1) <
+            (expected_num_of_mutations - num_of_mutations) {
             num_of_mutations += 1;
         }
 
         for _ in 0..num_of_mutations {
-            selector = rng.gen_range(0, population_size * num_gens_per_chromosome);
-            chosen_chromosome = auxiliar_population[selector % population_size].chromosome;
+            selector =
+                rng.gen_range(
+                    0,
+                    population_size * num_gens_per_chromosome);
+
+            chosen_chromosome =
+                auxiliar_population[selector % population_size]
+                    .chromosome;
             chosen_gene = selector / population_size;
 
             // Mutation operator
@@ -999,7 +1089,8 @@ generational_memetic_algorithm(
         // Evaluation ----
         for chrom_and_res in auxiliar_population.iter_mut() {
             if chrom_and_res.result == -1. {
-                chrom_and_res.result = quick_eval(&chrom_and_res.chromosome);
+                chrom_and_res.result =
+                    quick_eval(&chrom_and_res.chromosome);
                 calls_to_eval += 1;
             }
         }
@@ -1030,55 +1121,59 @@ Hasta aquí el algoritmo es igual que el generacional como ya dijimos. Aquí, ca
 \end{itemize}
 
 \begin{verbatim}
-        if generation_counter % 10 == 0 {
-            match memetic_type {
-                // Apply local search to every chromosome
-                1 => {
-                    for chrom_and_res in current_population {
-                        calls_to_eval +=
-                            low_intensity_local_search(
-                                data,
-                                chrom_and_res,
-                                rng
-                            );
-                    }
-                }
+if generation_counter % 10 == 0 {
+    match memetic_type {
+        // Apply local search to every chromosome
+        1 => {
+            for chrom_and_res in current_population {
+                calls_to_eval +=
+                    low_intensity_local_search(
+                        data,
+                        chrom_and_res,
+                        rng
+                    );
+            }
+        }
 
-                // Apply to a random percentage of the population
-                2 => {
-                    local_seach_probability = 0.1;
-                    expected_local_searches =
-                        local_seach_probability * population_size;
-                    num_local_searches = expected_local_searches as usize;
+        // Apply to a random percentage of the population
+        2 => {
+            local_seach_probability = 0.1;
+            expected_local_searches =
+                local_seach_probability * population_size;
+            num_local_searches = expected_local_searches as usize;
 
-                    if rng.gen_range(0., 1.) <
-                        expected_local_searches - num_local_searches {
-                        num_local_searches += 1;
-                    }
-
-                    for _ in 0..num_local_searches {
-                        index = rng.gen_range(0, population_size);
-                        calls_to_eval +=
-                            low_intensity_local_search(
-                                data,
-                                current_population[index],
-                                rng
-                            );
-                    }
-                }
-                3 => {
-                    num_local_searches = (0.1 * population_size) as usize;
-
-                    for ind in 0..num_local_searches {
-                        calls_to_eval += low_intensity_local_search(
-                            data,
-                            current_population[population_size - ind - 1],
-                            rng,
-                        );
-                    }
-                }
+            if rng.gen_range(0., 1.) <
+                expected_local_searches - num_local_searches {
+                num_local_searches += 1;
             }
 
+            for _ in 0..num_local_searches {
+                index = rng.gen_range(0, population_size);
+                calls_to_eval +=
+                    low_intensity_local_search(
+                        data,
+                        current_population[index],
+                        rng
+                    );
+            }
+        }
+        3 => {
+            num_local_searches = (0.1 * population_size) as usize;
+
+            for ind in 0..num_local_searches {
+                calls_to_eval += low_intensity_local_search(
+                    data,
+                    current_population[population_size - ind - 1],
+                    rng,
+                );
+            }
+        }
+    }
+\end{verbatim}
+
+Por último, reordenamos la población y actualizamos el mejor cromosomoma.
+
+\begin{verbatim}
             current_population.sort();
             current_best_chrom_res = current_population.last();
         }
@@ -1122,8 +1217,7 @@ Ionosphere es una base de datos de radar recogidos por un sistema en Goose Bay, 
 Cada ejemplo consta de 34 atributos reales y de una clase que puede ser bueno (si el retorno de radar muestra evidencia de algún tipo de estructura en la ionosfera) o malo (las señales simplemente atraviesan la ionosfera).
 
 \subsubsection{Texture}
-Texture es una base de datos que contiene datos sobre fotografias de distintos tipos de texturas con el objetivo de distinguir entre 11 texturas diferentes (césped, piel de becerro prensada, papel hecho a
-mano, rafia en bucle a una pila alta, lienzo de algodón,...). El fichero proporcionado contiene $550$ ejemplos.
+Texture es una base de datos que contiene datos sobre fotografias de distintos tipos de texturas con el objetivo de distinguir entre 11 texturas diferentes (césped, piel de becerro prensada, papel hecho a mano, rafia en bucle a una pila alta, lienzo de algodón, \dots). El fichero proporcionado contiene $550$ ejemplos.
 
 Cada ejemplo consta de 40 atributos construidos mediante la estimación de momentos modificados de cuarto orden en cuatro orientaciones: 0, 45, 90 y 135 grados, y de una clase que indica el tipo de textura.
 
@@ -1139,9 +1233,34 @@ En esta sección mostraremos los resultados obtenidos al ejecutar cada uno de lo
 
 La ejecución que mostraremos se ha realizado utilizando como semilla el valor por defecto $1$. La ejecución ha sido realizado en mi portatil personal con sistema operativo Manjaro Linux 18.0.3, y procesador Intel(R) Core(TM) i7-8750H CPU @ 2.20GHz\\
 
-En plas primeras seis tablas (1-6) se muestran los resultados de dos algoritmos aleatorios distintos: el primero elige una clase aleatoria de entre las conocidas para clasificar y el segundo crea un vector de pesos aleatorio y clasifica de manera normal utilizandolo
+\subsubsection{Práctica 1}
+En las primeras seis tablas (1-6) se muestran los resultados de dos algoritmos aleatorios distintos: el primero elige una clase aleatoria de entre las conocidas para clasificar y el segundo crea un vector de pesos aleatorio y clasifica de manera normal utilizándolo
 
 En las siguientes tres tablas (7-9) se muestran los resultados obtenidos utilizando simplemente el algoritmo \textbf{1nn} para clasificar. A continuación, se muestran los resultados asociados al algoritmo greedy \textbf{RELIEF} (tablas 10-12). Por último, las tres tablas restantes (13-15) muestran los resultados obtenidos utilizando la \textbf{búsqueda local} como algoritmo para resolver el problema de APC.
+
+\subsubsection{Pŕactica 2}
+En primer lugar, mencionemos las constantes que hemos utilizado para ejecutar los algoritmos:
+\begin{itemize}
+    \item El \textbf{tamaño de la población} ha sido $30$ para los algoritmos genéticos, y $10$ para los algoritmos meméticos.
+    \item El número \textbf{máximo de llamadas a la función de evaluación} ha sido 15000 en todos los algoritmos.
+    \item En los algoritmos generacionales (tanto los genéticos como los meméticos) la \textbf{probabilidad de cruce} ha sido $0.7$ mientras que en los estacionarios es 1 (debido a que únicamente realiza un cruce en cada iteración).
+    \item La \textbf{probabilidad de mutación} ha sido $0.001$ en todos los algoritmos.
+    \item El operador de selección es siempre el \textbf{torneo binario}.
+    \item El parámetro utilizado para el \textbf{operador de cruce aritmético} ha sido $0.4$ mientras que para el \textbf{operador de cruce blx} ha sido $0.3$.
+    \item Por último, el \textbf{operador de mutación} que hemos utilizado ha sido el de la práctica anterior, con media $0$ y desviación típica  $0.3$.
+\end{itemize}
+
+Dicho esto, en las tablas a continuación hemos recogido los resultados de la ejecución de siete algoritmos:
+\begin{itemize}
+    \item Algoritmo genético generacional con cruce aritmético (\textbf{AGG-Arithmetic}).
+    \item Algoritmo genético generacional con cruce blx (\textbf{AGG-BLX}).
+    \item Algoritmo genético estacionario con cruce aritmético (\textbf{AGE-Arithmetic}).
+    \item Algoritmo genético estacionario con cruce blx (\textbf{AGE-BLX}).
+    \item Algoritmo memético generacional con cruce blx sobre toda la población (\textbf{AM-1}).
+    \item Algoritmo memético generacional con cruce blx sobre un $10\%$ de la población (\textbf{AM-0.1}).
+    \item Algoritmo memético generacional con cruce blx sobre el mejor $10\%$ de la población (\textbf{AM-0.1best}).
+
+\end{itemize}
 
 \newpage
 \subsubsection{Tablas Selección Aleatoria}
@@ -1351,7 +1470,7 @@ En las siguientes tres tablas (7-9) se muestran los resultados obtenidos utiliza
 
 \newpage
 
-\subsubsection{Tablas Busqueda Local}
+\subsubsection{Tablas Búsqueda Local}
 
  \begin{table}[ht]
   \centering
@@ -1366,7 +1485,7 @@ En las siguientes tres tablas (7-9) se muestran los resultados obtenidos utiliza
 4         & 73.68421  & 77.41936  & 75.55179  & 13647  \\
   \bottomrule
   \end{tabular}
-  \caption{Ejecución del algoritmo \textbf{busqueda local} sobre el conjunto Colposcopy }
+  \caption{Ejecución del algoritmo \textbf{búsqueda local} sobre el conjunto Colposcopy }
   \end{table}%
 
  \begin{table}[ht]
@@ -1382,7 +1501,7 @@ En las siguientes tres tablas (7-9) se muestran los resultados obtenidos utiliza
 4         & 84.28571  & 82.35294 & 83.31933  & 2318   \\
   \bottomrule
   \end{tabular}
-  \caption{Ejecución del algoritmo \textbf{busqueda local} sobre el conjunto Ionosphere}
+  \caption{Ejecución del algoritmo \textbf{búsqueda local} sobre el conjunto Ionosphere}
   \end{table}%
 
  \begin{table}[ht]
@@ -1398,7 +1517,371 @@ En las siguientes tres tablas (7-9) se muestran los resultados obtenidos utiliza
 4         & 87.27273  & 90       & 88.63637  & 27707  \\
 \bottomrule
   \end{tabular}
-  \caption{Ejecución del algoritmo \textbf{busqueda local} sobre el conjunto Texture}
+  \caption{Ejecución del algoritmo \textbf{búsqueda local} sobre el conjunto Texture}
+  \end{table}%
+
+\newpage
+
+\subsubsection{Tablas AGG-Arithmetic ($\alpha$ = 0.4)}
+
+ \begin{table}[ht]
+  \centering
+  \begin{tabular}[t]{rrrrr}
+  \toprule
+  Partición &Tasa\_class &Tasa\_red & Agregado & Tiempo(ms)\\
+  \midrule
+0         & 72.881355 & 64.51613  & 68.698746 & 39763  \\
+1         & 75.4386   & 70.96774  & 73.20317  & 40507  \\
+2         & 71.929825 & 51.612904 & 61.771362 & 40507  \\
+3         & 73.68421  & 54.83871  & 64.26146  & 40498  \\
+4         & 77.192986 & 64.51613  & 70.85455  & 40390  \\
+  \bottomrule
+  \end{tabular}
+  \caption{Ejecución del algoritmo \textbf{AGG-Arithmetic} sobre el conjunto Colposcopy }
+  \end{table}%
+
+ \begin{table}[ht]
+  \centering
+  \begin{tabular}[t]{rrrrr}
+  \toprule
+  Partición &Tasa\_class &Tasa\_red & Agregado & Tiempo(ms)\\
+  \midrule
+0         & 87.323944 & 76.47059  & 81.89726 & 32188  \\
+1         & 85.71429  & 67.64706  & 76.68067 & 32468  \\
+2         & 85.71429  & 73.52941  & 79.62185 & 32944  \\
+3         & 85.71429  & 70.588234 & 78.15126 & 32490  \\
+4         & 91.42857  & 67.64706  & 79.53781 & 32409  \\
+  \bottomrule
+  \end{tabular}
+  \caption{Ejecución del algoritmo \textbf{AGG-Arithmetic} sobre el conjunto Ionosphere}
+  \end{table}%
+
+ \begin{table}[ht]
+  \centering
+  \begin{tabular}[t]{rrrrr}
+  \toprule
+  Partición &Tasa\_class &Tasa\_red & Agregado & Tiempo(ms)\\
+  \midrule
+0         & 90.90909  & 75       & 82.954544 & 89442  \\
+1         & 90        & 67.5     & 78.75     & 89442  \\
+2         & 91.818184 & 72.5     & 82.15909  & 89720  \\
+3         & 89.09091  & 75       & 82.045456 & 89095  \\
+4         & 89.09091  & 82.5     & 85.795456 & 88959  \\
+\bottomrule
+  \end{tabular}
+  \caption{Ejecución del algoritmo \textbf{AGG-Arithmetic} sobre el conjunto Texture}
+  \end{table}%
+
+\newpage
+
+\subsubsection{Tablas AGG-BLX ($\alpha$ = 0.3)}
+
+ \begin{table}[ht]
+  \centering
+  \begin{tabular}[t]{rrrrr}
+  \toprule
+  Partición &Tasa\_class &Tasa\_red & Agregado & Tiempo(ms)\\
+  \midrule
+0         & 69.49152  & 80.645164 & 75.068344 & 39875  \\
+1         & 66.666664 & 70.96774  & 68.8172   & 40847  \\
+2         & 80.70175  & 82.258064 & 81.479904 & 41838  \\
+3         & 71.929825 & 69.354836 & 70.642334 & 41238  \\
+4         & 80.70175  & 79.03226  & 79.867004 & 40502  \\
+  \bottomrule
+  \end{tabular}
+  \caption{Ejecución del algoritmo \textbf{AGG-BLX} sobre el conjunto Colposcopy }
+  \end{table}%
+
+ \begin{table}[ht]
+  \centering
+  \begin{tabular}[t]{rrrrr}
+  \toprule
+  Partición &Tasa\_class &Tasa\_red & Agregado & Tiempo(ms)\\
+  \midrule
+0         & 87.323944 & 85.29412  & 86.30904 & 32477  \\
+1         & 82.85714  & 88.23529  & 85.54622 & 33026  \\
+2         & 88.57143  & 85.29412  & 86.93277 & 32443  \\
+3         & 95.71429  & 79.411766 & 87.56303 & 32458  \\
+4         & 90        & 82.35294  & 86.17647 & 32389  \\
+  \bottomrule
+  \end{tabular}
+  \caption{Ejecución del algoritmo \textbf{AGG-BLX} sobre el conjunto Ionosphere}
+  \end{table}%
+
+ \begin{table}[ht]
+  \centering
+  \begin{tabular}[t]{rrrrr}
+  \toprule
+  Partición &Tasa\_class &Tasa\_red & Agregado & Tiempo(ms)\\
+  \midrule
+0         & 90        & 80       & 85        & 89601  \\
+1         & 86.36364  & 85       & 85.68182  & 89154  \\
+2         & 89.09091  & 80       & 84.545456 & 88862  \\
+3         & 87.27273  & 82.5     & 84.88637  & 88999  \\
+4         & 90        & 85       & 87.5      & 88999  \\
+\bottomrule
+  \end{tabular}
+  \caption{Ejecución del algoritmo \textbf{AGG-BLX} sobre el conjunto Texture}
+  \end{table}%
+
+\newpage
+
+\subsubsection{Tablas AGE-Arithmetic($\alpha$ = 0.4)}
+
+ \begin{table}[ht]
+  \centering
+  \begin{tabular}[t]{rrrrr}
+  \toprule
+  Partición &Tasa\_class &Tasa\_red & Agregado & Tiempo(ms)\\
+  \midrule
+0         & 79.66102  & 62.903225 & 71.28212  & 40681  \\
+1         & 75.4386   & 69.354836 & 72.39671  & 41862  \\
+2         & 68.42105  & 75.80645  & 72.113754 & 40758  \\
+3         & 71.929825 & 69.354836 & 70.642334 & 40765  \\
+4         & 85.96491  & 59.677418 & 72.82117  & 40777  \\
+  \bottomrule
+  \end{tabular}
+  \caption{Ejecución del algoritmo \textbf{AGE-Arithmetic} sobre el conjunto Colposcopy }
+  \end{table}%
+
+ \begin{table}[ht]
+  \centering
+  \begin{tabular}[t]{rrrrr}
+  \toprule
+  Partición &Tasa\_class &Tasa\_red & Agregado & Tiempo(ms)\\
+  \midrule
+0         & 91.54929  & 73.52941  & 82.53935 & 32223  \\
+1         & 84.28571  & 64.70588  & 74.4958  & 32542  \\
+2         & 85.71429  & 76.47059  & 81.09244 & 32719  \\
+3         & 94.28571  & 61.764706 & 78.02521 & 32487  \\
+4         & 90        & 70.588234 & 80.29411 & 32819  \\
+  \bottomrule
+  \end{tabular}
+  \caption{Ejecución del algoritmo \textbf{AGE-Arithmetic} sobre el conjunto Ionosphere}
+  \end{table}%
+
+ \begin{table}[ht]
+  \centering
+  \begin{tabular}[t]{rrrrr}
+  \toprule
+  Partición &Tasa\_class &Tasa\_red & Agregado & Tiempo(ms)\\
+  \midrule
+0         & 94.545456 & 75       & 84.77273  & 88412  \\
+1         & 88.181816 & 70       & 79.09091  & 88637  \\
+2         & 90.90909  & 65       & 77.954544 & 88360  \\
+3         & 90.90909  & 75       & 82.954544 & 89690  \\
+4         & 91.818184 & 70       & 80.90909  & 90119  \\
+\bottomrule
+  \end{tabular}
+  \caption{Ejecución del algoritmo \textbf{AGE-Arithmetic} sobre el conjunto Texture}
+  \end{table}%
+
+\newpage
+
+\subsubsection{Tablas AGE-BLX ($\alpha$ = 0.3)}
+
+ \begin{table}[ht]
+  \centering
+  \begin{tabular}[t]{rrrrr}
+  \toprule
+  Partición &Tasa\_class &Tasa\_red & Agregado & Tiempo(ms)\\
+  \midrule
+0         & 76.27119  & 79.03226  & 77.65172  & 39925  \\
+1         & 68.42105  & 77.41936  & 72.920204 & 40627  \\
+2         & 75.4386   & 79.03226  & 77.23543  & 40856  \\
+3         & 68.42105  & 69.354836 & 68.88794  & 40881  \\
+4         & 73.68421  & 70.96774  & 72.32597  & 41069  \\
+  \bottomrule
+  \end{tabular}
+  \caption{Ejecución del algoritmo \textbf{AGE-BLX} sobre el conjunto Colposcopy }
+  \end{table}%
+
+ \begin{table}[ht]
+  \centering
+  \begin{tabular}[t]{rrrrr}
+  \toprule
+  Partición &Tasa\_class &Tasa\_red & Agregado & Tiempo(ms)\\
+  \midrule
+0         & 87.323944 & 85.29412 & 86.30904  & 32322  \\
+1         & 84.28571  & 73.52941 & 78.90756  & 32370  \\
+2         & 85.71429  & 76.47059 & 81.09244  & 32358  \\
+3         & 95.71429  & 82.35294 & 89.033615 & 32462  \\
+4         & 85.71429  & 85.29412 & 85.5042   & 32397  \\
+  \bottomrule
+  \end{tabular}
+  \caption{Ejecución del algoritmo \textbf{AGE-BLX} sobre el conjunto Ionosphere}
+  \end{table}%
+
+ \begin{table}[ht]
+  \centering
+  \begin{tabular}[t]{rrrrr}
+  \toprule
+  Partición &Tasa\_class &Tasa\_red & Agregado & Tiempo(ms)\\
+  \midrule
+0         & 86.36364  & 80       & 83.18182  & 90643  \\
+1         & 81.818184 & 85       & 83.40909  & 90123  \\
+2         & 92.72727  & 80       & 86.36363  & 90486  \\
+3         & 91.818184 & 85       & 88.40909  & 91006  \\
+4         & 89.09091  & 75       & 82.045456 & 90744  \\
+\bottomrule
+  \end{tabular}
+  \caption{Ejecución del algoritmo \textbf{AGE-BLX} sobre el conjunto Texture}
+  \end{table}%
+
+\newpage
+
+\subsubsection{Tablas AM-1}
+
+ \begin{table}[ht]
+  \centering
+  \begin{tabular}[t]{rrrrr}
+  \toprule
+  Partición &Tasa\_class &Tasa\_red & Agregado & Tiempo(ms)\\
+  \midrule
+0         & 69.49152  & 87.09677  & 78.29414  & 41640  \\
+1         & 68.42105  & 80.645164 & 74.53311  & 42538  \\
+2         & 73.68421  & 82.258064 & 77.97114  & 42426  \\
+3         & 78.947365 & 85.48387  & 82.21562  & 42218  \\
+4         & 75.4386   & 83.870964 & 79.654785 & 42256  \\
+  \bottomrule
+  \end{tabular}
+  \caption{Ejecución del algoritmo \textbf{AM-1} sobre el conjunto Colposcopy }
+  \end{table}%
+
+ \begin{table}[ht]
+  \centering
+  \begin{tabular}[t]{rrrrr}
+  \toprule
+  Partición &Tasa\_class &Tasa\_red & Agregado & Tiempo(ms)\\
+  \midrule
+0         & 88.73239  & 88.23529  & 88.48384  & 33523  \\
+1         & 80        & 91.17647  & 85.588234 & 34114  \\
+2         & 72.85714  & 94.117645 & 83.4874   & 33812  \\
+3         & 82.85714  & 91.17647  & 87.0168   & 33713  \\
+4         & 82.85714  & 88.23529  & 85.54622  & 33724  \\
+  \bottomrule
+  \end{tabular}
+  \caption{Ejecución del algoritmo \textbf{AM-1} sobre el conjunto Ionosphere}
+  \end{table}%
+
+ \begin{table}[ht]
+  \centering
+  \begin{tabular}[t]{rrrrr}
+  \toprule
+  Partición &Tasa\_class &Tasa\_red & Agregado & Tiempo(ms)\\
+  \midrule
+0         & 89.09091  & 85       & 87.045456 & 93409  \\
+1         & 88.181816 & 82.5     & 85.34091  & 92224  \\
+2         & 90.90909  & 85       & 87.954544 & 92258  \\
+3         & 87.27273  & 87.5     & 87.38637  & 95025  \\
+4         & 89.09091  & 85       & 87.045456 & 93018  \\
+\bottomrule
+  \end{tabular}
+  \caption{Ejecución del algoritmo \textbf{AM-1} sobre el conjunto Texture}
+  \end{table}%
+
+\newpage
+
+\subsubsection{Tablas AM-0.1}
+
+ \begin{table}[ht]
+  \centering
+  \begin{tabular}[t]{rrrrr}
+  \toprule
+  Partición &Tasa\_class &Tasa\_red & Agregado & Tiempo(ms)\\
+  \midrule
+0         & 81.355934 & 82.258064 & 81.807    & 40257  \\
+1         & 68.42105  & 79.03226  & 73.726654 & 40981  \\
+2         & 78.947365 & 74.19355  & 76.57046  & 41111  \\
+3         & 70.17544  & 85.48387  & 77.82965  & 41137  \\
+4         & 82.45614  & 82.258064 & 82.3571   & 41200  \\
+  \bottomrule
+  \end{tabular}
+  \caption{Ejecución del algoritmo \textbf{AM-0.1} sobre el conjunto Colposcopy }
+  \end{table}%
+
+ \begin{table}[ht]
+  \centering
+  \begin{tabular}[t]{rrrrr}
+  \toprule
+  Partición &Tasa\_class &Tasa\_red & Agregado & Tiempo(ms)\\
+  \midrule
+0         & 88.73239  & 88.23529 & 88.48384  & 32413  \\
+1         & 84.28571  & 91.17647 & 87.731094 & 32466  \\
+2         & 88.57143  & 91.17647 & 89.87395  & 32606  \\
+3         & 87.14286  & 85.29412 & 86.21849  & 32659  \\
+4         & 90        & 88.23529 & 89.117645 & 32661  \\
+  \bottomrule
+  \end{tabular}
+  \caption{Ejecución del algoritmo \textbf{AM-0.1} sobre el conjunto Ionosphere}
+  \end{table}%
+
+ \begin{table}[ht]
+  \centering
+  \begin{tabular}[t]{rrrrr}
+  \toprule
+  Partición &Tasa\_class &Tasa\_red & Agregado & Tiempo(ms)\\
+  \midrule
+0         & 85.454544 & 87.5     & 86.47727 & 89427  \\
+1         & 90        & 85       & 87.5     & 89981  \\
+2         & 93.63636  & 87.5     & 90.56818 & 89217  \\
+3         & 85.454544 & 85       & 85.22727 & 89169  \\
+4         & 85.454544 & 85       & 85.22727 & 89236  \\
+\bottomrule
+  \end{tabular}
+  \caption{Ejecución del algoritmo \textbf{AM-0.1} sobre el conjunto Texture}
+  \end{table}%
+
+\newpage
+
+\subsubsection{Tablas AM-0.1best}
+
+ \begin{table}[ht]
+  \centering
+  \begin{tabular}[t]{rrrrr}
+  \toprule
+  Partición &Tasa\_class &Tasa\_red & Agregado & Tiempo(ms)\\
+  \midrule
+0         & 67.79661  & 85.48387  & 76.64024  & 40137  \\
+1         & 70.17544  & 80.645164 & 75.4103   & 41001  \\
+2         & 66.666664 & 82.258064 & 74.462364 & 40961  \\
+3         & 78.947365 & 83.870964 & 81.409164 & 41011  \\
+4         & 73.68421  & 88.70968  & 81.196945 & 41058  \\
+  \bottomrule
+  \end{tabular}
+  \caption{Ejecución del algoritmo \textbf{AM-0.1best} sobre el conjunto Colposcopy }
+  \end{table}%
+
+ \begin{table}[ht]
+  \centering
+  \begin{tabular}[t]{rrrrr}
+  \toprule
+  Partición &Tasa\_class &Tasa\_red & Agregado & Tiempo(ms)\\
+  \midrule
+0         & 83.098595 & 88.23529 & 85.66695  & 32446  \\
+1         & 82.85714  & 88.23529 & 85.54622  & 32684  \\
+2         & 82.85714  & 88.23529 & 85.54622  & 33144  \\
+3         & 90        & 91.17647 & 90.588234 & 32519  \\
+4         & 87.14286  & 88.23529 & 87.68907  & 32890  \\
+  \bottomrule
+  \end{tabular}
+  \caption{Ejecución del algoritmo \textbf{AM-0.1best} sobre el conjunto Ionosphere}
+  \end{table}%
+
+ \begin{table}[ht]
+  \centering
+  \begin{tabular}[t]{rrrrr}
+  \toprule
+  Partición &Tasa\_class &Tasa\_red & Agregado & Tiempo(ms)\\
+  \midrule
+0         & 88.181816 & 87.5     & 87.84091 & 89856  \\
+1         & 88.181816 & 87.5     & 87.84091 & 89793  \\
+2         & 91.818184 & 87.5     & 89.65909 & 89770  \\
+3         & 87.27273  & 87.5     & 87.38637 & 89521  \\
+4         & 92.72727  & 85       & 88.86363 & 89674  \\
+\bottomrule
+  \end{tabular}
+  \caption{Ejecución del algoritmo \textbf{AM-0.1best} sobre el conjunto Texture}
   \end{table}%
 
 \newpage
@@ -1416,10 +1899,20 @@ En las siguientes tres tablas (7-9) se muestran los resultados obtenidos utiliza
  1-NN               & 75.266132 & 0 & 37.633066 & 0\\
  RELIEF             & 75.979781 & 36.451613 & 56.215697 & 3\\
  Local search       & 71.067498 & 80.645164 & 75.856331 & 11073.8\\
+     AGG-Arithmetic& 74.225395 & 61.290323 & 67.757859 &  40333 \\
+     AGG-BLX& 73.898302 & 76.451613 & 75.174957 &  40860 \\
+     AGE-Arithmetic& 76.283081 & 67.419353 & 71.851217 & 40968.6 \\
+     AGE-BLX&  72.44722 & 75.161291 & 73.804256 & 40671.6 \\
+     AM-1& 73.196549 & 83.870966 & 78.533758 & 42215.6 \\
+     AM-0.1& 76.271186 & 80.645162 & 78.458174 & 40937.2 \\
+     AM-0.1best& 71.454058 & 84.193548 & 77.823803 & 40833.6 \\
+
   \bottomrule
   \end{tabular}
   \caption{Tabla conjunta sobre el conjunto Colposcopy }
   \end{table}%
+% TODO Arreglar tablas
+\newpage
 
  \begin{table}[ht]
   \centering
@@ -1432,10 +1925,20 @@ En las siguientes tres tablas (7-9) se muestran los resultados obtenidos utiliza
 1-NN & 86.599598 & 0 & 43.299799 & 0\\
  RELIEF& 87.45674 & 2.9411764 & 45.198958 & 2\\
  Local search& 87.452714 & 86.470588 & 86.961651 & 3235.6\\
+     AGG-Arithmetic& 87.179077 & 71.176471 & 79.177774 & 32499.8 \\
+     AGG-BLX& 88.893361 & 84.117647 & 86.505504 & 32558.6 \\
+     AGE-Arithmetic&    89.167 & 69.411764 & 79.289382 &  32558 \\
+     AGE-BLX& 87.750505 & 80.588236 & 84.169370 & 32381.8 \\
+     AM-1& 81.460762 & 90.588233 & 86.024498 & 33777.2 \\
+     AM-0.1& 87.746478 & 88.823528 & 88.285003 &  32561 \\
+     AM-0.1best& 85.191147 & 88.823526 & 87.007337 & 32736.6 \\
+
   \bottomrule
   \end{tabular}
   \caption{Tabla conjunta sobre el conjunto Ionosphere}
   \end{table}%
+
+\newpage
 
  \begin{table}[ht]
   \centering
@@ -1448,16 +1951,22 @@ En las siguientes tres tablas (7-9) se muestran los resultados obtenidos utiliza
  1-NN               & 92.545453 & 0 & 46.272727 & 1\\
  RELIEF             & 92.909090 & 5.5 & 49.204545 & 7.2\\
  Local search       & 89.272727 & 82.5 & 85.886364 & 17632.4\\
+     AGG-Arithmetic& 90.181819 &     74.5 & 82.340909 & 89331.6 \\
+     AGG-BLX& 88.545456 &     82.5 & 85.522728 &  89123 \\
+     AGE-Arithmetic& 91.272727 &       71 & 81.136364 & 89043.6 \\
+     AGE-BLX& 88.363638 &       81 & 84.681819 & 90600.4 \\
+     AM-1& 88.909091 &      85. & 86.954546 & 93186.8 \\
+     AM-0.1& 87.999998 &      86. & 86.999999 &  89406 \\
+     AM-0.1best& 89.636363 &      87. & 88.318182 & 89722.8 \\
 \bottomrule
   \end{tabular}
   \caption{Tabla conjunta sobre el conjunto Texture}
   \end{table}%
 
 \newpage
-
 \subsection{Análisis de los resultados}
-
-Comencemos hablando del algoritmo que selecciona una clase de las conocidas de manera aleatoria. Al contrario de lo que cabría esperar, obtiene <<buenos>> resultados tanto sobre el conjunto de datos \textit{Colposcopy}, como sobre \textit{Ionosphere} . Esto es debido a que únicamente hay dos clases distintas, luego la tasa de clasificación está cercana al $50\%$ , y además la tasa de reducción es del $100\%$ ya que no utiliza ningún peso. En consecuencia el agregado se encuentra entre el $70\%$ y el $80\%$. Ahora bien, como en \textit{Texture} hay once clases distintas, la tasa de clasificación es bastante mala pero el agregado sigue estando por encima del $50\%$ gracias a la tasa de reducción.
+\subsubsection{Práctica 1}
+Comencemos hablando del algoritmo que selecciona una clase de las conocidas de manera aleatoria. Al contrario de lo que cabría esperar, obtiene <<buenos>> resultados tanto sobre el conjunto de datos \textit{Colposcopy}, como sobre \textit{Ionosphere}. Esto es debido a que únicamente hay dos clases distintas, luego la tasa de clasificación está cercana al $50\%$ , y además la tasa de reducción es del $100\%$ ya que no utiliza ningún peso. En consecuencia el agregado se encuentra entre el $70\%$ y el $80\%$. Ahora bien, como en \textit{Texture} hay once clases distintas, la tasa de clasificación es bastante mala pero el agregado sigue estando por encima del $50\%$ gracias a la tasa de reducción.
 
 Si nos fijamos ahora en el algoritmo que utiliza un vector de pesos aleatorios, observamos que tanto en el conjunto \textit{Ionosphere} como en \textit{Texture} obtiene muy buenas tasas de clasificación (cercanas al $90\%$), y bastante buenas en \textit{Colposcopy} (cerca de un $73\%$). Sin embargo, la tasa de reducción no es muy grande en ninguno de los casos, estando siempre en torno al $20\%$. Esto provoca que el agregado esté cerca del $50\%$ en todos los casos.
 
@@ -1469,6 +1978,25 @@ Si nos fijamos en los resultados obtenidos por uno de los dos algoritmos princip
 
 Por último, si estudiamos la \textbf{búsqueda local} es facil observar que es la que mejores resultados obtiene si tenemos en cuenta la función de evaluación. Esto es debido a que en la implementación de este algoritmo, se buscan maximos de la función de evaluación, por tanto, aunque las tasas de clasificación sean ligeramente menores que en los tres casos anteriores, se consigue una muy alta tasa de reducción, lo que consigue que el agregado esté cercano al $75\%$ en Colposcopy, y al  $89\%$ en los dos conjuntos restantes. Si hablamos del tiempo, en este algoritmo es considerablemente mayor, lo cual era de esperar, pues en cada iteración del bucle principal se evaluán los pesos tras la mutación, por lo que se recorre el conjunto de elementos un mínimo de veinte veces el número de atributos y un máximo de 15000 veces.
 
-Las conclusiones que obtenemos teniendo en cuenta todos los resultados es que, en la función de evaluación le estamos dando demasiada importancia a la reducción, ya que ambos algoritmos aleatorios obtienen prácticamente las puntuaciones más altas a excepción de la \textbf{búsqueda local}  . Esta se comporta como podría esperarse, y es que obtiene puntuaciones muy altas, reduciendo un gran número de pesos.
+Las conclusiones que obtenemos teniendo en cuenta todos los resultados es que, en la función de evaluación le estamos dando demasiada importancia a la reducción, ya que ambos algoritmos aleatorios obtienen prácticamente las puntuaciones más altas a excepción de la \textbf{búsqueda local}. Esta se comporta como podría esperarse, y es que obtiene puntuaciones muy altas, reduciendo un gran número de pesos.
+
+\subsubsection{Práctica 2}
+En primer lugar mencionemos el tiempo que tardan los algoritmos, que en está práctica no tiene mucho que comentar. Eso es porque como en todos la condición de parada es el mismo número de llamadas a la función de evaluación, que es la que consume casi todo el tiempo de CPU, pues el tiempo es casi el mismo en todos los algoritmos (cerca de un minuto y medio).
+
+Comencemos analizando los resultados sobre los algoritmos genéticos, ya que los meméticos se basan en estos. En nuestro caso, tenemos que cuatro algoritmos que difieren únicamente en el operador de cruce y en el reemplazo.
+
+Si observamos las tablas agrupadas, es fácil comprobar que en todos los conjuntos de los que disponemos el operador de \textbf{cruce BLX} funciona mejor que el \textbf{aritmético} como era de esperar (entre un $4\%$ y un  $5\%$ de media). Por un lado, el \textbf{cruce aritmético} es demasiado restrictivo, ya que siempre genera un hijo cuyos genes están en una posición especifica muy cercana al centro entre los respectivos genes de los padres. Por otro lado, el \textbf{cruce BLX} realiza una mayor exploración del espacio, ya cada peso del cromosoma hijo lo genera de manera aleatoria en un intervalo alrededor de los pesos de los padres. Esto en conjunto hace que el \textbf{BLX} en general sea mejor operador de cruce.
+
+A continuación, analicemos cuál de los dos esquemas de reemplazo funciona mejor. En las tablas podemos observar que el reemplazo \textbf{generacional} funciona mejor que el \textbf{estacionario}(cerca de un $2\%$ de diferencia media). Esto es debido a que el reemplazo \textbf{generacional} tiene en cuenta una gran parte de la población (se utiliza el $70\%$ de la población como padres), mientras que en el reemplazo \textbf{estacionario}, la población se modifica muy poco entre dos generaciones (como mucho se realizan dos reemplazos). Además, en el \textbf{generacional} la mutación puede ocurrir sobre cualquier elemento de la población auxiliar al completo, mientras que en el \textbf{estacionario} únicamente se puede produce en uno de los dos hijos. Estos dos hechos provocan que como dijimos antes, el reemplazo \textbf{generacional} funcione mejor que el \textbf{estacionario}.
+
+Dicho esto, de los cuatro algoritmos genéticos el que mejor funciona es el \textbf{AGG-BLX}, asi que es el que hemos utilizado como base para el algoritmo memético.
+
+En los algoritmos \textbf{meméticos} intentamos suplir la falta de explotación de las soluciones que presentan los algoritmos anteriores. Estos, al trabajar con una población de tamaño considerable, reparten las mutaciones entre cada uno de los cromosomas de cada generación, lo que nos lleva a pensar que es una buena idea intentar mejorar por separado los cromosomas de los que disponemos. Para no sobreexplotar dichas soluciones, realizaremos una búsqueda local de baja intensidad sobre un cierto subconjunto de la población, y todo esto cada 10 generaciones (para que la población cambie lo suficiente y no quedarse estancado en los mismos máximos locales).
+
+Antes de analizar los resultados entre los distintos algoritmos meméticos hay que resaltar que en general la diferencia de resultados entre ellos es más bien pequeña, debido posiblemente a los conjuntos de datos y a la semilla utilizada (tras varias pruebas con varias semillas, no había una diferencia notable así que hemos mostrado los resultados con la semilla inicial).
+
+Se puede apreciar que el \textbf{AM-1} es el que peor se comporta en general (a excepción del conjunto de datos \textit{Colposcopy}, posiblemente a causa de lo mencionado en el párrafo anterior). Esto ocurre porque aplica la búsqueda local a la población entera, y probablemente haya mínimos locales a los que converjan varios elementos de la población, luego estaríamos <<gastando>> evaluaciones sin obtener mejoras realmente. Con esto, los algoritmos \textbf{AM-0.1} y \textbf{AM-0.1best} son los que mejores resultados obtienen, siendo la diferencia entre ellos poco significante. Aunque a priori podríamos pensar que el \textbf{AM-0.1best} debería ser el mejor puesto que explota únicamente las mejores soluciones, es probable que en repitadas ocasiones los mejores cromosomas compartan mínimos locales como mencionamos antes, por lo que el factor aleatorio del \textbf{AM-0.1} puede ser favorable y de ahí que obtenga resultados similares.
+
+Por último, para realizar una comparación con la práctica anterior, el único algoritmo que está a la altura de los realizados en esta práctica es la \textbf{búsqueda local}. Este obtiene resultados muy parecidos al mejor de los cuatro genéticos (\textbf{AGG-BLX}). Como dijimos en el análisis de resultados de la práctica anterior, es <<rentable>> explotar una solución buena ya que la reducción tiene mucho peso en la función de evaluación, y es <<relativamente sencillo>> eliminar pesos, lo que favorece a la \textbf{búsqueda local}. A priori sería lógico pensar que el \textbf{AGG-BLX} debería obtener mejores resultados, ya que realiza una exploración del espacio bastante más amplia, y también explota aunque en menor medida las soluciones. Sin embargo, al final los resultados son similares por lo que acabamos de mencionar. Ahora bien, al suplir esta falta de explotación de las soluciones en los algoritmos meméticos, los resultados mejoran consistentemente respecto de la \textbf{búsqueda local}, lo que concuerda con lo estudiado teóricamente en el sentido de que es necesario buscar un equilibrio entre la exploración y la explotación.
 
 \end{document}
