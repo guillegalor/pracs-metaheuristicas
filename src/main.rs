@@ -1088,6 +1088,60 @@ pub fn generational_memetic_algorithm<T: DataElem<T> + Copy + Clone>(
     return current_best_chrom_res.chromosome;
 }
 
+// TODO Ask for the name of this algorithm in english
+// TODO Find what mu and phi are.
+pub fn simulated_annealing<T: DataElem<T> + Copy + Clone>(
+    data: &Vec<T>,
+    rng: &mut StdRng,
+    max_calls_to_eval: usize,
+    final_temperature: &f32,
+    phi: &f32,
+    mu: &f32,
+    mutation_operator: fn(&mut Vec<f32>, usize, &mut StdRng),
+) -> Vec<f32> {
+    let quick_eval = |weights: &Chromosome| {
+        return evaluate(data, data, weights, 0.5).2;
+    };
+
+    let num_attributes = T::get_num_attributes();
+    let uniform = Uniform::new(0.0, 1.0);
+
+    // Initialize
+    let mut current_solution: Vec<f32> = Vec::with_capacity(T::get_num_attributes());
+    for _ in 0..num_attributes {
+        current_solution.push(uniform.sample(rng));
+    }
+
+    let mut best_solution = current_solution.clone();
+    let mut best_solution_cost = quick_eval(&best_solution);
+
+    // TODO Ask if this is correct (probably not)
+    let max_neighbours = 10 * num_attributes;
+    let max_successes = 0.1 * max_neighbours as f32;
+
+    // TODO Calculate num_coolings
+    let num_coolings = max_calls_to_eval / max_neighbours;
+
+    let initial_temperature = mu * best_solution_cost / -phi.ln();
+
+    let beta = (initial_temperature - final_temperature)
+        / (initial_temperature * final_temperature * num_coolings as f32);
+
+    let next_temperature = |temperature: &f32| {
+        return *temperature / (1. + beta * (*temperature));
+    };
+
+    for _ in 0..num_coolings {
+        for _ in 0..max_neighbours {
+            let aux_index = rng.gen_range(0, num_attributes);
+            let mut possible_solution = current_solution.clone();
+            mutation_operator(&mut possible_solution, aux_index, rng);
+        }
+    }
+
+    Vec::new()
+}
+
 // Operators for genetic algorithm -------
 pub fn binary_tournament_selection(
     population: &Vec<ChromosomeAndResult>,
