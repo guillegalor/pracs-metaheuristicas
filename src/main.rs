@@ -157,7 +157,7 @@ impl DataElem<TextureRecord> for TextureRecord {
         return self.class;
     }
 
-    // NOTE Not sure if we should check if index is in range
+    // Precondition: index is in range
     fn get_attribute(&self, index: usize) -> f32 {
         return self.attributes[index];
     }
@@ -196,7 +196,7 @@ impl DataElem<ColposcopyRecord> for ColposcopyRecord {
         return self.class;
     }
 
-    // NOTE Not sure if we should check if index is in range
+    // Precondition: index is in range
     fn get_attribute(&self, index: usize) -> f32 {
         return self.attributes[index];
     }
@@ -235,7 +235,7 @@ impl DataElem<IonosphereRecord> for IonosphereRecord {
         return self.class;
     }
 
-    // NOTE Not sure if we should check if index is in range
+    // Precondition: index is in range
     fn get_attribute(&self, index: usize) -> f32 {
         return self.attributes[index];
     }
@@ -1088,8 +1088,7 @@ pub fn generational_memetic_algorithm<T: DataElem<T> + Copy + Clone>(
     return current_best_chrom_res.chromosome;
 }
 
-// TODO Ask for the name of this algorithm in english
-// TODO Find what mu and phi are.
+// TODO Find out what mu and phi really are
 pub fn simulated_annealing<T: DataElem<T> + Copy + Clone>(
     data: &Vec<T>,
     rng: &mut StdRng,
@@ -1111,35 +1110,61 @@ pub fn simulated_annealing<T: DataElem<T> + Copy + Clone>(
     for _ in 0..num_attributes {
         current_solution.push(uniform.sample(rng));
     }
-
+    let mut current_solution_fit = quick_eval(&current_solution);
     let mut best_solution = current_solution.clone();
-    let mut best_solution_cost = quick_eval(&best_solution);
+    let mut best_solution_fit = current_solution_fit;
 
     // TODO Ask if this is correct (probably not)
     let max_neighbours = 10 * num_attributes;
-    let max_successes = 0.1 * max_neighbours as f32;
+    let max_successes = (0.1 * max_neighbours as f32) as usize;
 
-    // TODO Calculate num_coolings
     let num_coolings = max_calls_to_eval / max_neighbours;
 
-    let initial_temperature = mu * best_solution_cost / -phi.ln();
+    let initial_temperature = mu * best_solution_fit / -phi.ln();
 
     let beta = (initial_temperature - final_temperature)
         / (initial_temperature * final_temperature * num_coolings as f32);
 
-    let next_temperature = |temperature: &f32| {
+    let cool_down = |temperature: &f32| {
         return *temperature / (1. + beta * (*temperature));
     };
+
+    let mut temperature = initial_temperature;
+    let mut succeses = 0;
 
     for _ in 0..num_coolings {
         for _ in 0..max_neighbours {
             let aux_index = rng.gen_range(0, num_attributes);
             let mut possible_solution = current_solution.clone();
             mutation_operator(&mut possible_solution, aux_index, rng);
+            let possible_sol_fit = quick_eval(&possible_solution);
+            let diff = current_solution_fit - possible_sol_fit;
+
+            if diff < 0. || uniform.sample(rng) <= (-1. * diff / temperature).exp() {
+                current_solution = possible_solution;
+                current_solution_fit = possible_sol_fit;
+
+                if current_solution_fit >= best_solution_fit {
+                    best_solution = current_solution.clone();
+                    best_solution_fit = current_solution_fit;
+                }
+
+                succeses = succeses + 1;
+                if succeses >= max_successes {
+                    break;
+                }
+            }
         }
+        if succeses == 0 {
+            break;
+        } else {
+            succeses = 0;
+        }
+
+        temperature = cool_down(&temperature);
     }
 
-    Vec::new()
+    return best_solution;
 }
 
 // Operators for genetic algorithm -------
