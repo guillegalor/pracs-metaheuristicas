@@ -456,12 +456,29 @@ pub fn relief_algorithm<T: DataElem<T> + Copy + Clone>(data: &Vec<T>) -> Vec<f32
     return weights;
 }
 
+// TODO Move this to its place
+pub fn random_weights_generator(num_attrs: usize, rng: &mut StdRng) -> Vec<f32> {
+    // Normal distribution with mean = 0.0, standard deviation = 0.3
+    let uniform = Uniform::new(0.0, 1.0);
+
+    // Initialize random weights (using normal distribution)
+    let mut weights: Vec<f32> = Vec::with_capacity(num_attrs);
+    for _ in 0..num_attrs {
+        weights.push(uniform.sample(rng));
+    }
+
+    weights
+}
+
 // Local search
 // Return the weights vec and the evaluation rate
 pub fn local_search<T: DataElem<T> + Copy + Clone>(
     data: &Vec<T>,
     rng: &mut StdRng,
+    initial_weights: &Vec<f32>,
     mutation_operator: fn(&mut Vec<f32>, usize, &mut StdRng),
+    max_mutations: usize,
+    max_neighbour_without_muting: usize,
 ) -> Vec<f32> {
     let num_attrs = T::get_num_attributes();
 
@@ -477,18 +494,13 @@ pub fn local_search<T: DataElem<T> + Copy + Clone>(
 
     // Local search parameters
     let mut num_of_mutations = 0;
-    let max_mutations = 15000;
     let mut neighbours_without_mutting = 0;
-    let max_neighbour_without_muting = 20 * num_attrs;
 
     // Normal distribution with mean = 0.0, standard deviation = 0.3
     let uniform = Uniform::new(0.0, 1.0);
 
-    // Initialize random weights (using normal distribution)
-    let mut weights: Vec<f32> = Vec::with_capacity(T::get_num_attributes());
-    for _ in 0..num_attrs {
-        weights.push(uniform.sample(rng));
-    }
+    // Initialize weights
+    let mut weights: Vec<f32> = initial_weights.clone();
 
     let mut current_ev_rate = evaluate(data, data, &weights, 0.5).2;
 
@@ -1155,6 +1167,7 @@ pub fn simulated_annealing<T: DataElem<T> + Copy + Clone>(
                 }
             }
         }
+
         if succeses == 0 {
             break;
         } else {
@@ -1165,6 +1178,50 @@ pub fn simulated_annealing<T: DataElem<T> + Copy + Clone>(
     }
 
     return best_solution;
+}
+
+pub fn iterated_local_search<T: DataElem<T> + Copy + Clone>(
+    data: &Vec<T>,
+    rng: &mut StdRng,
+    max_calls_to_local_search: usize,
+    weight_mutation_probability: f32,
+    mutation_operator: fn(&mut Vec<f32>, usize, &mut StdRng),
+    local_search: fn(&Vec<T>, &mut StdRng, &Vec<f32>) -> Vec<f32>,
+) -> Vec<f32> {
+    let quick_eval = |weights: &Vec<f32>| {
+        return evaluate(data, data, weights, 0.5).2;
+    };
+
+    let num_attributes = T::get_num_attributes();
+    let expected_num_of_mutations = weight_mutation_probability * num_attributes as f32;
+
+    let mut best_solution: Vec<f32> = random_weights_generator(num_attributes, rng);
+    best_solution = local_search(data, rng, &best_solution);
+    let mut best_solution_fit = quick_eval(&best_solution);
+
+    for _ in 0..max_calls_to_local_search - 1 {
+        let mut possible_solution = best_solution.clone();
+
+        let mut num_of_mutations = expected_num_of_mutations as usize;
+        if rng.gen_range(0., 1.) < (expected_num_of_mutations - num_of_mutations as f32) {
+            num_of_mutations += 1;
+        }
+
+        let selected_indices = (0..num_attributes).choose_multiple(rng, num_of_mutations);
+        for index in selected_indices {
+            mutation_operator(&mut possible_solution, index, rng);
+        }
+
+        possible_solution = local_search(data, rng, &possible_solution);
+        let possible_solution_fit = quick_eval(&possible_solution);
+
+        if possible_solution_fit > best_solution_fit {
+            best_solution = possible_solution;
+            best_solution_fit = possible_solution_fit;
+        }
+    }
+
+    best_solution
 }
 
 // Operators for genetic algorithm -------
@@ -1494,9 +1551,11 @@ pub fn run<T: DataElem<T> + Copy + Clone>(
     //     local_search(
     //         training_set,
     //         rng,
-    //        |weights: &mut Vec<f32>, index: usize, rng: &mut StdRng| {
+    //         |weights: &mut Vec<f32>, index: usize, rng: &mut StdRng| {
     //            weight_mutation(weights, index, 0.0, 0.3, rng)
-    //        },
+    //         },
+    //         15000,
+    //         20 * T::get_num_attributes(),
     //     )
     // });
     // weights_generators_names.push("Local Search");
