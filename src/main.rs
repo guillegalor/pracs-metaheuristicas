@@ -1111,7 +1111,7 @@ pub fn simulated_annealing<T: DataElem<T> + Copy + Clone>(
     mutation_operator: fn(&mut Vec<f32>, usize, &mut StdRng),
 ) -> Vec<f32> {
     let quick_eval = |weights: &Chromosome| {
-        return evaluate(data, data, weights, 0.5).2;
+        return 1. - evaluate(data, data, weights, 0.5).2;
     };
 
     let num_attributes = T::get_num_attributes();
@@ -1127,7 +1127,7 @@ pub fn simulated_annealing<T: DataElem<T> + Copy + Clone>(
     let mut best_solution_fit = current_solution_fit;
 
     // TODO Ask if this is correct (probably not)
-    let max_neighbours = 10 * num_attributes;
+    let max_neighbours = 10 * data.len();
     let max_successes = (0.1 * max_neighbours as f32) as usize;
 
     let num_coolings = max_calls_to_eval / max_neighbours;
@@ -1150,7 +1150,7 @@ pub fn simulated_annealing<T: DataElem<T> + Copy + Clone>(
             let mut possible_solution = current_solution.clone();
             mutation_operator(&mut possible_solution, aux_index, rng);
             let possible_sol_fit = quick_eval(&possible_solution);
-            let diff = current_solution_fit - possible_sol_fit;
+            let diff = possible_sol_fit - current_solution_fit;
 
             if diff < 0. || uniform.sample(rng) <= (-1. * diff / temperature).exp() {
                 current_solution = possible_solution;
@@ -1222,6 +1222,156 @@ pub fn iterated_local_search<T: DataElem<T> + Copy + Clone>(
     }
 
     best_solution
+}
+
+// Diferential evolution
+pub fn de_rand1<T: DataElem<T> + Copy + Clone>(
+    data: &Vec<T>,
+    rng: &mut StdRng,
+    max_calls_to_eval: usize,
+    population_size: usize,
+    crossover_probability: f32,
+    f: f32,
+) -> Vec<f32> {
+    let quick_eval = |weights: &Vec<f32>| {
+        return evaluate(data, data, weights, 0.5).2;
+    };
+
+    let mut calls_to_eval = 0;
+    let mut population: Vec<ChromosomeAndResult> = Vec::with_capacity(population_size);
+    let num_attributes = T::get_num_attributes();
+
+    for _ in 0..population_size {
+        let aux = random_weights_generator(num_attributes, rng);
+        population.push(ChromosomeAndResult {
+            chromosome: aux.clone(),
+            result: quick_eval(&aux),
+        });
+        calls_to_eval += 1;
+    }
+
+    while calls_to_eval < max_calls_to_eval {
+        let mut offspring_population: Vec<ChromosomeAndResult> =
+            Vec::with_capacity(population_size);
+        for i in 0..population_size {
+            let mut offspring: Vec<f32> = Vec::with_capacity(num_attributes);
+
+            // Select parents indices
+            let parents_indices = (0..population_size).choose_multiple(rng, 3);
+            let parent1 = &population[parents_indices[0]].chromosome;
+            let parent2 = &population[parents_indices[1]].chromosome;
+            let parent3 = &population[parents_indices[2]].chromosome;
+
+            for gene in 0..num_attributes {
+                if rng.gen_range(0., 1.) < crossover_probability {
+                    offspring.push(parent1[gene] + f * (parent2[gene] - parent3[gene]))
+                } else {
+                    offspring.push(population[i].chromosome[gene]);
+                }
+            }
+
+            offspring_population.push(ChromosomeAndResult {
+                chromosome: offspring.clone(),
+                result: quick_eval(&offspring),
+            });
+
+            calls_to_eval += 1;
+        }
+
+        for i in 0..population_size {
+            if population[i] < offspring_population[i] {
+                population[i] = offspring_population[i].clone();
+            }
+        }
+    }
+
+    population.sort();
+
+    return population
+        .last()
+        .expect("Población vacía en evolución diferencial")
+        .chromosome
+        .clone();
+}
+
+// Diferential evolution
+pub fn de_current_to_best<T: DataElem<T> + Copy + Clone>(
+    data: &Vec<T>,
+    rng: &mut StdRng,
+    max_calls_to_eval: usize,
+    population_size: usize,
+    crossover_probability: f32,
+    f: f32,
+) -> Vec<f32> {
+    let quick_eval = |weights: &Vec<f32>| {
+        return evaluate(data, data, weights, 0.5).2;
+    };
+
+    let mut calls_to_eval = 0;
+    let mut population: Vec<ChromosomeAndResult> = Vec::with_capacity(population_size);
+    let num_attributes = T::get_num_attributes();
+
+    for _ in 0..population_size {
+        let aux = random_weights_generator(num_attributes, rng);
+        population.push(ChromosomeAndResult {
+            chromosome: aux.clone(),
+            result: quick_eval(&aux),
+        });
+        calls_to_eval += 1;
+    }
+
+    while calls_to_eval < max_calls_to_eval {
+        population.sort();
+        let best = population
+            .last()
+            .expect("Empty population in de_current_to_best")
+            .chromosome
+            .clone();
+        let mut offspring_population: Vec<ChromosomeAndResult> =
+            Vec::with_capacity(population_size);
+        for i in 0..population_size {
+            let current = &population[i].chromosome;
+            let mut offspring: Vec<f32> = Vec::with_capacity(num_attributes);
+
+            // Select parents indices
+            let parents_indices = (0..population_size).choose_multiple(rng, 2);
+            let parent1 = &population[parents_indices[0]].chromosome;
+            let parent2 = &population[parents_indices[1]].chromosome;
+
+            for gene in 0..num_attributes {
+                if rng.gen_range(0., 1.) < crossover_probability {
+                    offspring.push(
+                        current[gene]
+                            + f * (best[gene] - current[gene])
+                            + f * (parent1[gene] - parent2[gene]),
+                    );
+                } else {
+                    offspring.push(population[i].chromosome[gene]);
+                }
+            }
+
+            offspring_population.push(ChromosomeAndResult {
+                chromosome: offspring.clone(),
+                result: quick_eval(&offspring),
+            });
+
+            calls_to_eval += 1;
+        }
+
+        for i in 0..population_size {
+            if population[i] < offspring_population[i] {
+                population[i] = offspring_population[i].clone();
+            }
+        }
+    }
+
+    population.sort();
+
+    return population
+        .last()
+        .expect("Población vacía en evolución diferencial")
+        .chromosome
+        .clone();
 }
 
 // Operators for genetic algorithm -------
