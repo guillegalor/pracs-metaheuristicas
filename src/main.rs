@@ -496,9 +496,6 @@ pub fn local_search<T: DataElem<T> + Copy + Clone>(
     let mut num_of_mutations = 0;
     let mut neighbours_without_mutting = 0;
 
-    // Normal distribution with mean = 0.0, standard deviation = 0.3
-    let uniform = Uniform::new(0.0, 1.0);
-
     // Initialize weights
     let mut weights: Vec<f32> = initial_weights.clone();
 
@@ -1105,13 +1102,13 @@ pub fn simulated_annealing<T: DataElem<T> + Copy + Clone>(
     data: &Vec<T>,
     rng: &mut StdRng,
     max_calls_to_eval: usize,
-    final_temperature: &f32,
-    phi: &f32,
-    mu: &f32,
+    final_temperature: f32,
+    phi: f32,
+    mu: f32,
     mutation_operator: fn(&mut Vec<f32>, usize, &mut StdRng),
 ) -> Vec<f32> {
     let quick_eval = |weights: &Chromosome| {
-        return 1. - evaluate(data, data, weights, 0.5).2;
+        return evaluate(data, data, weights, 0.5).2;
     };
 
     let num_attributes = T::get_num_attributes();
@@ -1132,7 +1129,7 @@ pub fn simulated_annealing<T: DataElem<T> + Copy + Clone>(
 
     let num_coolings = max_calls_to_eval / max_neighbours;
 
-    let initial_temperature = mu * best_solution_fit / -phi.ln();
+    let initial_temperature = mu * (1. - best_solution_fit) / -phi.ln();
 
     let beta = (initial_temperature - final_temperature)
         / (initial_temperature * final_temperature * num_coolings as f32);
@@ -1150,7 +1147,7 @@ pub fn simulated_annealing<T: DataElem<T> + Copy + Clone>(
             let mut possible_solution = current_solution.clone();
             mutation_operator(&mut possible_solution, aux_index, rng);
             let possible_sol_fit = quick_eval(&possible_solution);
-            let diff = possible_sol_fit - current_solution_fit;
+            let diff = current_solution_fit - possible_sol_fit;
 
             if diff < 0. || uniform.sample(rng) <= (-1. * diff / temperature).exp() {
                 current_solution = possible_solution;
@@ -1224,7 +1221,64 @@ pub fn iterated_local_search<T: DataElem<T> + Copy + Clone>(
     best_solution
 }
 
-// Diferential evolution
+pub fn local_search_max_calls<T: DataElem<T> + Copy + Clone>(
+    data: &Vec<T>,
+    rng: &mut StdRng,
+    initial_weights: &Vec<f32>,
+    max_calls_to_eval: usize,
+) -> Vec<f32> {
+    let num_attrs = T::get_num_attributes();
+    let mut calls_to_eval = 0;
+
+    // Closure that fills and shuffle indices
+    let fill_and_shuffle = |indices: &mut Vec<usize>, rng: &mut StdRng| {
+        *indices = (0..num_attrs).collect();
+        indices.shuffle(rng);
+    };
+
+    // Initialize vector of indices and shuffles it
+    let mut indices: Vec<usize> = Vec::with_capacity(num_attrs);
+    fill_and_shuffle(&mut indices, rng);
+
+    // Normal distribution with mean = 0.0, standard deviation = 0.3
+    let normal = Normal::new(0.0, 0.3);
+
+    let mut best_weights = initial_weights.clone();
+    let mut best_weights_fitness = evaluate(data, data, &best_weights, 0.5).2;
+
+    while calls_to_eval < max_calls_to_eval {
+        let mut aux_weights = best_weights.clone();
+
+        let index = indices.pop().expect("El vector está vacio");
+
+        // Mutation
+        aux_weights[index] += normal.sample(rng) as f32;
+
+        // Truncate into [0,1]
+        if aux_weights[index] < 0. {
+            aux_weights[index] = 0.;
+        } else if aux_weights[index] > 1. {
+            aux_weights[index] = 1.;
+        }
+
+        let aux_ev_rate = evaluate(data, data, &aux_weights, 0.5).2;
+        calls_to_eval += 1;
+
+        if aux_ev_rate > best_weights_fitness {
+            best_weights_fitness = aux_ev_rate;
+            best_weights = aux_weights;
+            fill_and_shuffle(&mut indices, rng);
+        } else {
+            if indices.is_empty() {
+                fill_and_shuffle(&mut indices, rng);
+            }
+        }
+    }
+
+    best_weights
+}
+
+// Diferential evolution rand 1
 pub fn de_rand1<T: DataElem<T> + Copy + Clone>(
     data: &Vec<T>,
     rng: &mut StdRng,
@@ -1710,146 +1764,191 @@ pub fn run<T: DataElem<T> + Copy + Clone>(
     // });
     // weights_generators_names.push("Local Search");
 
-    // AGG - Arithmetic_0.4
-    weights_generators.push(|training_set: &Vec<T>, rng: &mut StdRng| {
-        generational_genetic_algorithm(
-            training_set,
-            rng,
-            30,
-            0.7,
-            0.001,
-            15000,
-            binary_tournament_selection,
-            |ch1: &Chromosome, ch2: &Chromosome, _rng: &mut StdRng| {
-                arithmetic_mean_crossover(ch1, ch2, 0.4)
-            },
-            |weights: &mut Vec<f32>, index: usize, rng: &mut StdRng| {
-                weight_mutation(weights, index, 0.0, 0.3, rng)
-            },
-        )
-    });
-    weights_generators_names.push("AGG - Arithmetic_0.4");
+    // // AGG - Arithmetic_0.4
+    // weights_generators.push(|training_set: &Vec<T>, rng: &mut StdRng| {
+    //     generational_genetic_algorithm(
+    //         training_set,
+    //         rng,
+    //         30,
+    //         0.7,
+    //         0.001,
+    //         15000,
+    //         binary_tournament_selection,
+    //         |ch1: &Chromosome, ch2: &Chromosome, _rng: &mut StdRng| {
+    //             arithmetic_mean_crossover(ch1, ch2, 0.4)
+    //         },
+    //         |weights: &mut Vec<f32>, index: usize, rng: &mut StdRng| {
+    //             weight_mutation(weights, index, 0.0, 0.3, rng)
+    //         },
+    //     )
+    // });
+    // weights_generators_names.push("AGG - Arithmetic_0.4");
 
-    // AGG - BLX_0.3
-    weights_generators.push(|training_set: &Vec<T>, rng: &mut StdRng| {
-        generational_genetic_algorithm(
-            training_set,
-            rng,
-            30,
-            0.7,
-            0.001,
-            15000,
-            binary_tournament_selection,
-            |ch1: &Chromosome, ch2: &Chromosome, rng: &mut StdRng| {
-                blx_alpha_crossover(ch1, ch2, 0.3, rng)
-            },
-            |weights: &mut Vec<f32>, index: usize, rng: &mut StdRng| {
-                weight_mutation(weights, index, 0.0, 0.3, rng)
-            },
-        )
-    });
-    weights_generators_names.push("AGG - BLX_0.3");
+    // // AGG - BLX_0.3
+    // weights_generators.push(|training_set: &Vec<T>, rng: &mut StdRng| {
+    //     generational_genetic_algorithm(
+    //         training_set,
+    //         rng,
+    //         30,
+    //         0.7,
+    //         0.001,
+    //         15000,
+    //         binary_tournament_selection,
+    //         |ch1: &Chromosome, ch2: &Chromosome, rng: &mut StdRng| {
+    //             blx_alpha_crossover(ch1, ch2, 0.3, rng)
+    //         },
+    //         |weights: &mut Vec<f32>, index: usize, rng: &mut StdRng| {
+    //             weight_mutation(weights, index, 0.0, 0.3, rng)
+    //         },
+    //     )
+    // });
+    // weights_generators_names.push("AGG - BLX_0.3");
 
-    // AGE - Arithmetic_0.4
-    weights_generators.push(|training_set: &Vec<T>, rng: &mut StdRng| {
-        steady_state_genetic_algorithm(
-            training_set,
-            rng,
-            30,
-            0.001,
-            15000,
-            binary_tournament_selection,
-            |ch1: &Chromosome, ch2: &Chromosome, _: &mut StdRng| {
-                arithmetic_mean_crossover(ch1, ch2, 0.4)
-            },
-            |weights: &mut Vec<f32>, index: usize, rng: &mut StdRng| {
-                weight_mutation(weights, index, 0.0, 0.3, rng)
-            },
-        )
-    });
-    weights_generators_names.push("AGE - Arithmetic_0.4");
+    // // AGE - Arithmetic_0.4
+    // weights_generators.push(|training_set: &Vec<T>, rng: &mut StdRng| {
+    //     steady_state_genetic_algorithm(
+    //         training_set,
+    //         rng,
+    //         30,
+    //         0.001,
+    //         15000,
+    //         binary_tournament_selection,
+    //         |ch1: &Chromosome, ch2: &Chromosome, _: &mut StdRng| {
+    //             arithmetic_mean_crossover(ch1, ch2, 0.4)
+    //         },
+    //         |weights: &mut Vec<f32>, index: usize, rng: &mut StdRng| {
+    //             weight_mutation(weights, index, 0.0, 0.3, rng)
+    //         },
+    //     )
+    // });
+    // weights_generators_names.push("AGE - Arithmetic_0.4");
 
-    // AGE - BLX_0.3
-    weights_generators.push(|training_set: &Vec<T>, rng: &mut StdRng| {
-        steady_state_genetic_algorithm(
-            training_set,
-            rng,
-            30,
-            0.001,
-            15000,
-            binary_tournament_selection,
-            |ch1: &Chromosome, ch2: &Chromosome, rng: &mut StdRng| {
-                blx_alpha_crossover(ch1, ch2, 0.3, rng)
-            },
-            |weights: &mut Vec<f32>, index: usize, rng: &mut StdRng| {
-                weight_mutation(weights, index, 0.0, 0.3, rng)
-            },
-        )
-    });
-    weights_generators_names.push("AGE - BLX_0.3");
+    // // AGE - BLX_0.3
+    // weights_generators.push(|training_set: &Vec<T>, rng: &mut StdRng| {
+    //     steady_state_genetic_algorithm(
+    //         training_set,
+    //         rng,
+    //         30,
+    //         0.001,
+    //         15000,
+    //         binary_tournament_selection,
+    //         |ch1: &Chromosome, ch2: &Chromosome, rng: &mut StdRng| {
+    //             blx_alpha_crossover(ch1, ch2, 0.3, rng)
+    //         },
+    //         |weights: &mut Vec<f32>, index: usize, rng: &mut StdRng| {
+    //             weight_mutation(weights, index, 0.0, 0.3, rng)
+    //         },
+    //     )
+    // });
+    // weights_generators_names.push("AGE - BLX_0.3");
 
-    // AM - 1
-    weights_generators.push(|training_set: &Vec<T>, rng: &mut StdRng| {
-        generational_memetic_algorithm(
-            training_set,
-            rng,
-            10,
-            0.7,
-            0.001,
-            15000,
-            1,
-            binary_tournament_selection,
-            |ch1: &Chromosome, ch2: &Chromosome, rng: &mut StdRng| {
-                blx_alpha_crossover(ch1, ch2, 0.3, rng)
-            },
-            |weights: &mut Vec<f32>, index: usize, rng: &mut StdRng| {
-                weight_mutation(weights, index, 0.0, 0.3, rng)
-            },
-        )
-    });
-    weights_generators_names.push("AM - 1");
+    // // AM - 1
+    // weights_generators.push(|training_set: &Vec<T>, rng: &mut StdRng| {
+    //     generational_memetic_algorithm(
+    //         training_set,
+    //         rng,
+    //         10,
+    //         0.7,
+    //         0.001,
+    //         15000,
+    //         1,
+    //         binary_tournament_selection,
+    //         |ch1: &Chromosome, ch2: &Chromosome, rng: &mut StdRng| {
+    //             blx_alpha_crossover(ch1, ch2, 0.3, rng)
+    //         },
+    //         |weights: &mut Vec<f32>, index: usize, rng: &mut StdRng| {
+    //             weight_mutation(weights, index, 0.0, 0.3, rng)
+    //         },
+    //     )
+    // });
+    // weights_generators_names.push("AM - 1");
 
-    // AM - 0.1
-    weights_generators.push(|training_set: &Vec<T>, rng: &mut StdRng| {
-        generational_memetic_algorithm(
-            training_set,
-            rng,
-            10,
-            0.7,
-            0.001,
-            15000,
-            2,
-            binary_tournament_selection,
-            |ch1: &Chromosome, ch2: &Chromosome, rng: &mut StdRng| {
-                blx_alpha_crossover(ch1, ch2, 0.3, rng)
-            },
-            |weights: &mut Vec<f32>, index: usize, rng: &mut StdRng| {
-                weight_mutation(weights, index, 0.0, 0.3, rng)
-            },
-        )
-    });
-    weights_generators_names.push("AM - 0.1");
+    // // AM - 0.1
+    // weights_generators.push(|training_set: &Vec<T>, rng: &mut StdRng| {
+    //     generational_memetic_algorithm(
+    //         training_set,
+    //         rng,
+    //         10,
+    //         0.7,
+    //         0.001,
+    //         15000,
+    //         2,
+    //         binary_tournament_selection,
+    //         |ch1: &Chromosome, ch2: &Chromosome, rng: &mut StdRng| {
+    //             blx_alpha_crossover(ch1, ch2, 0.3, rng)
+    //         },
+    //         |weights: &mut Vec<f32>, index: usize, rng: &mut StdRng| {
+    //             weight_mutation(weights, index, 0.0, 0.3, rng)
+    //         },
+    //     )
+    // });
+    // weights_generators_names.push("AM - 0.1");
 
-    // AM - 0.1best
+    // // AM - 0.1best
+    // weights_generators.push(|training_set: &Vec<T>, rng: &mut StdRng| {
+    //     generational_memetic_algorithm(
+    //         training_set,
+    //         rng,
+    //         10,
+    //         0.7,
+    //         0.001,
+    //         15000,
+    //         3,
+    //         binary_tournament_selection,
+    //         |ch1: &Chromosome, ch2: &Chromosome, rng: &mut StdRng| {
+    //             blx_alpha_crossover(ch1, ch2, 0.3, rng)
+    //         },
+    //         |weights: &mut Vec<f32>, index: usize, rng: &mut StdRng| {
+    //             weight_mutation(weights, index, 0.0, 0.3, rng)
+    //         },
+    //     )
+    // });
+    // weights_generators_names.push("AM - 0.1best");
+
+    // Simulated Annealing
     weights_generators.push(|training_set: &Vec<T>, rng: &mut StdRng| {
-        generational_memetic_algorithm(
+        simulated_annealing(
             training_set,
             rng,
-            10,
-            0.7,
-            0.001,
             15000,
-            3,
-            binary_tournament_selection,
-            |ch1: &Chromosome, ch2: &Chromosome, rng: &mut StdRng| {
-                blx_alpha_crossover(ch1, ch2, 0.3, rng)
-            },
+            0.001,
+            0.3,
+            0.3,
             |weights: &mut Vec<f32>, index: usize, rng: &mut StdRng| {
                 weight_mutation(weights, index, 0.0, 0.3, rng)
             },
         )
     });
-    weights_generators_names.push("AM - 0.1best");
+    weights_generators_names.push("Simulated Annealing");
+
+    // Iterated local search
+    weights_generators.push(|training_set: &Vec<T>, rng: &mut StdRng| {
+        iterated_local_search(
+            training_set,
+            rng,
+            15,
+            0.1,
+            |weights: &mut Vec<f32>, index: usize, rng: &mut StdRng| {
+                weight_mutation(weights, index, 0.0, 0.4, rng)
+            },
+            |data: &Vec<T>, rng: &mut StdRng, initial_weights: &Vec<f32>| {
+                local_search_max_calls(data, rng, initial_weights, 1000)
+            },
+        )
+    });
+    weights_generators_names.push("Iterated LS");
+
+    // Diferential Evolution Rand1
+    weights_generators.push(|training_set: &Vec<T>, rng: &mut StdRng| {
+        de_rand1(training_set, rng, 15000, 50, 0.5, 0.5)
+    });
+    weights_generators_names.push("Diferential Evolution Rand1");
+
+    // Diferential Evolution Current Best
+    weights_generators.push(|training_set: &Vec<T>, rng: &mut StdRng| {
+        de_current_to_best(training_set, rng, 15000, 50, 0.5, 0.5)
+    });
+    weights_generators_names.push("Diferential Evolution Current Best");
 
     let mut result_tables =
         vec![
@@ -1873,6 +1972,7 @@ pub fn run<T: DataElem<T> + Copy + Clone>(
         let mut now;
 
         for (ind, weights_generator) in weights_generators.iter().enumerate() {
+            println!("Ejecutando {}", weights_generators_names[ind]);
             now = Instant::now();
             let weights = weights_generator(&training_set, rng);
             let results = evaluate(&training_set, &test_set, &weights, 0.5);
