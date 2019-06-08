@@ -545,7 +545,6 @@ pub fn local_search<T: DataElem<T> + Copy + Clone>(
 
         num_of_mutations += 1;
     }
-
     return weights;
 }
 
@@ -1110,7 +1109,6 @@ pub fn generational_memetic_algorithm<T: DataElem<T> + Copy + Clone>(
     return current_best_chrom_res.chromosome;
 }
 
-// TODO Find out what mu and phi really are
 pub fn simulated_annealing<T: DataElem<T> + Copy + Clone>(
     data: &Vec<T>,
     rng: &mut StdRng,
@@ -1193,7 +1191,7 @@ pub fn simulated_annealing<T: DataElem<T> + Copy + Clone>(
 pub fn iterated_local_search<T: DataElem<T> + Copy + Clone>(
     data: &Vec<T>,
     rng: &mut StdRng,
-    max_calls_to_local_search: usize,
+    calls_to_local_search: usize,
     weight_mutation_probability: f32,
     mutation_operator: fn(&mut Vec<f32>, usize, &mut StdRng),
     local_search: fn(&Vec<T>, &mut StdRng, &Vec<f32>) -> Vec<f32>,
@@ -1209,7 +1207,7 @@ pub fn iterated_local_search<T: DataElem<T> + Copy + Clone>(
     best_solution = local_search(data, rng, &best_solution);
     let mut best_solution_fit = quick_eval(&best_solution);
 
-    for _ in 0..max_calls_to_local_search - 1 {
+    for _ in 0..calls_to_local_search - 1 {
         let mut possible_solution = best_solution.clone();
 
         let mut num_of_mutations = expected_num_of_mutations as usize;
@@ -1938,34 +1936,43 @@ pub fn run<T: DataElem<T> + Copy + Clone>(
     // });
     // weights_generators_names.push("Simulated Annealing");
 
-    // // Iterated local search
+    // Iterated local search
+    weights_generators.push(|training_set: &Vec<T>, rng: &mut StdRng| {
+        iterated_local_search(
+            training_set,
+            rng,
+            15,
+            0.1,
+            |weights: &mut Vec<f32>, index: usize, rng: &mut StdRng| {
+                weight_mutation(weights, index, 0.0, 0.4, rng)
+            },
+            |data: &Vec<T>, rng: &mut StdRng, initial_weights: &Vec<f32>| {
+                local_search(
+                    data,
+                    rng,
+                    initial_weights,
+                    |weights: &mut Vec<f32>, index: usize, rng: &mut StdRng| {
+                        weight_mutation(weights, index, 0.0, 0.3, rng)
+                    },
+                    1000,
+                    20 * T::get_num_attributes(),
+                )
+            },
+        )
+    });
+    weights_generators_names.push("Iterated LS");
+
+    // // Diferential Evolution Rand1
     // weights_generators.push(|training_set: &Vec<T>, rng: &mut StdRng| {
-    //     iterated_local_search(
-    //         training_set,
-    //         rng,
-    //         15,
-    //         0.1,
-    //         |weights: &mut Vec<f32>, index: usize, rng: &mut StdRng| {
-    //             weight_mutation(weights, index, 0.0, 0.4, rng)
-    //         },
-    //         |data: &Vec<T>, rng: &mut StdRng, initial_weights: &Vec<f32>| {
-    //             local_search_max_calls(data, rng, initial_weights, 1000)
-    //         },
-    //     )
+    //     de_rand1(training_set, rng, 15000, 50, 0.5, 0.5)
     // });
-    // weights_generators_names.push("Iterated LS");
+    // weights_generators_names.push("Diferential Evolution Rand1");
 
-    // Diferential Evolution Rand1
-    weights_generators.push(|training_set: &Vec<T>, rng: &mut StdRng| {
-        de_rand1(training_set, rng, 15000, 50, 0.5, 0.5)
-    });
-    weights_generators_names.push("Diferential Evolution Rand1");
-
-    // Diferential Evolution Current Best
-    weights_generators.push(|training_set: &Vec<T>, rng: &mut StdRng| {
-        de_current_to_best(training_set, rng, 15000, 50, 0.5, 0.5)
-    });
-    weights_generators_names.push("Diferential Evolution Current Best");
+    // // Diferential Evolution Current Best
+    // weights_generators.push(|training_set: &Vec<T>, rng: &mut StdRng| {
+    //     de_current_to_best(training_set, rng, 15000, 50, 0.5, 0.5)
+    // });
+    // weights_generators_names.push("Diferential Evolution Current Best");
 
     let mut result_tables =
         vec![
