@@ -16,6 +16,19 @@ use std::time::Instant;
 use std::cmp::Ordering;
 
 // ---------------------------------------------------------------------------------
+// Auxiliary functions
+// ---------------------------------------------------------------------------------
+fn truncate_01(n: &f32) -> f32 {
+    if *n < 0. {
+        0.
+    } else if *n > 1. {
+        1.
+    } else {
+        *n
+    }
+}
+
+// ---------------------------------------------------------------------------------
 // DataElem definitions and specific functions for it
 // ---------------------------------------------------------------------------------
 
@@ -1311,14 +1324,22 @@ pub fn de_rand1<T: DataElem<T> + Copy + Clone>(
             let mut offspring: Vec<f32> = Vec::with_capacity(num_attributes);
 
             // Select parents indices
-            let parents_indices = (0..population_size).choose_multiple(rng, 3);
+            let mut parents_indices = (0..population_size).choose_multiple(rng, 3);
+            while parents_indices.contains(&i) {
+                parents_indices = (0..population_size).choose_multiple(rng, 3);
+            }
+
             let parent1 = &population[parents_indices[0]].chromosome;
             let parent2 = &population[parents_indices[1]].chromosome;
             let parent3 = &population[parents_indices[2]].chromosome;
 
+            let rand_gene = rng.gen_range(0, num_attributes);
+
             for gene in 0..num_attributes {
-                if rng.gen_range(0., 1.) < crossover_probability {
-                    offspring.push(parent1[gene] + f * (parent2[gene] - parent3[gene]))
+                if rng.gen_range(0., 1.) < crossover_probability || gene == rand_gene {
+                    offspring.push(truncate_01(
+                        &(parent1[gene] + f * (parent2[gene] - parent3[gene])),
+                    ))
                 } else {
                     offspring.push(population[i].chromosome[gene]);
                 }
@@ -1392,13 +1413,15 @@ pub fn de_current_to_best<T: DataElem<T> + Copy + Clone>(
             let parent1 = &population[parents_indices[0]].chromosome;
             let parent2 = &population[parents_indices[1]].chromosome;
 
+            let rand_gene = rng.gen_range(0, population_size);
+
             for gene in 0..num_attributes {
-                if rng.gen_range(0., 1.) < crossover_probability {
-                    offspring.push(
-                        current[gene]
+                if rng.gen_range(0., 1.) < crossover_probability || gene == rand_gene {
+                    offspring.push(truncate_01(
+                        &(current[gene]
                             + f * (best[gene] - current[gene])
-                            + f * (parent1[gene] - parent2[gene]),
-                    );
+                            + f * (parent1[gene] - parent2[gene])),
+                    ));
                 } else {
                     offspring.push(population[i].chromosome[gene]);
                 }
@@ -1533,13 +1556,7 @@ pub fn weight_mutation(
     let normal = Normal::new(mean.into(), std_deviation.into());
 
     weights[index] += normal.sample(rng) as f32;
-
-    // Truncate into [0,1]
-    if weights[index] < 0. {
-        weights[index] = 0.;
-    } else if weights[index] > 1. {
-        weights[index] = 1.;
-    }
+    weights[index] = truncate_01(&weights[index]);
 }
 
 //---------------------------------------------------------------------------------------
@@ -1905,38 +1922,38 @@ pub fn run<T: DataElem<T> + Copy + Clone>(
     // });
     // weights_generators_names.push("AM - 0.1best");
 
-    // Simulated Annealing
-    weights_generators.push(|training_set: &Vec<T>, rng: &mut StdRng| {
-        simulated_annealing(
-            training_set,
-            rng,
-            15000,
-            0.001,
-            0.3,
-            0.3,
-            |weights: &mut Vec<f32>, index: usize, rng: &mut StdRng| {
-                weight_mutation(weights, index, 0.0, 0.3, rng)
-            },
-        )
-    });
-    weights_generators_names.push("Simulated Annealing");
+    // // Simulated Annealing
+    // weights_generators.push(|training_set: &Vec<T>, rng: &mut StdRng| {
+    //     simulated_annealing(
+    //         training_set,
+    //         rng,
+    //         15000,
+    //         0.001,
+    //         0.3,
+    //         0.3,
+    //         |weights: &mut Vec<f32>, index: usize, rng: &mut StdRng| {
+    //             weight_mutation(weights, index, 0.0, 0.3, rng)
+    //         },
+    //     )
+    // });
+    // weights_generators_names.push("Simulated Annealing");
 
-    // Iterated local search
-    weights_generators.push(|training_set: &Vec<T>, rng: &mut StdRng| {
-        iterated_local_search(
-            training_set,
-            rng,
-            15,
-            0.1,
-            |weights: &mut Vec<f32>, index: usize, rng: &mut StdRng| {
-                weight_mutation(weights, index, 0.0, 0.4, rng)
-            },
-            |data: &Vec<T>, rng: &mut StdRng, initial_weights: &Vec<f32>| {
-                local_search_max_calls(data, rng, initial_weights, 1000)
-            },
-        )
-    });
-    weights_generators_names.push("Iterated LS");
+    // // Iterated local search
+    // weights_generators.push(|training_set: &Vec<T>, rng: &mut StdRng| {
+    //     iterated_local_search(
+    //         training_set,
+    //         rng,
+    //         15,
+    //         0.1,
+    //         |weights: &mut Vec<f32>, index: usize, rng: &mut StdRng| {
+    //             weight_mutation(weights, index, 0.0, 0.4, rng)
+    //         },
+    //         |data: &Vec<T>, rng: &mut StdRng, initial_weights: &Vec<f32>| {
+    //             local_search_max_calls(data, rng, initial_weights, 1000)
+    //         },
+    //     )
+    // });
+    // weights_generators_names.push("Iterated LS");
 
     // Diferential Evolution Rand1
     weights_generators.push(|training_set: &Vec<T>, rng: &mut StdRng| {
